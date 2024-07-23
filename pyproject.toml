@@ -16,6 +16,7 @@ tablate = "^0.1.12"
 pandas = "^2.2.2"
 tqdm = "^4.66.4"
 pydantic = "^2.8.2"
+radon = "^6.0.1"
 
 
 [build-system]
