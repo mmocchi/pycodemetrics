@@ -1,16 +1,14 @@
-from pycodemetrics.gitclient.gitcli import get_gitlogs, list_git_files
+from pycodemetrics.gitclient.gitcli import get_file_gitlogs, list_git_files
 from pycodemetrics.gitclient.models import GitFileCommitLog
 
 
-def parse_gitlogs(git_file_path: str, gitlogs: str) -> list[GitFileCommitLog]:
+def parse_gitlogs(git_file_path: str, gitlogs: list[str]) -> list[GitFileCommitLog]:
     """
     Parse the git logs and return a list of logs.
     """
-    logs = gitlogs.split("\n")
-
     parsed_logs = []
 
-    for log in logs:
+    for log in gitlogs:
         commit_hash, author, commit_date, message = log.split(",")
         parsed_logs.append(
             GitFileCommitLog(
@@ -26,7 +24,7 @@ def parse_gitlogs(git_file_path: str, gitlogs: str) -> list[GitFileCommitLog]:
 
 if __name__ == "__main__":
     for git_file_path in list_git_files():
-        rawlog = get_gitlogs(git_file_path)
-        parsed_logs = parse_gitlogs(git_file_path, rawlog)
+        rawlog = get_file_gitlogs(git_file_path)
+        parsed_logs = get_file_gitlogs(git_file_path, rawlog)
         for parsed_log in parsed_logs:
             print(parsed_log)
