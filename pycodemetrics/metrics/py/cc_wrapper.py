@@ -1,9 +1,18 @@
 import ast
+from dataclasses import dataclass
 
 from cognitive_complexity.api import get_cognitive_complexity
 
 
-def compute_cognitive_complexity(file_path: str) -> None:
+@dataclass
+class FunctionCognitiveComplexity:
+    function_name: str
+    complexity: int
+
+
+def get_function_cognitive_complexity(
+    file_path: str,
+) -> list[FunctionCognitiveComplexity]:
     """
     Compute the cognitive complexity of a code snippet.
     """
@@ -18,6 +27,9 @@ def compute_cognitive_complexity(file_path: str) -> None:
         for n in ast.walk(tree)
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
     )
+
+    results = []
     for funcdef in funcdefs:
         complexity = get_cognitive_complexity(funcdef)
-        print(funcdef.name, complexity)
+        results.append(FunctionCognitiveComplexity(funcdef.name, complexity))
+    return results
