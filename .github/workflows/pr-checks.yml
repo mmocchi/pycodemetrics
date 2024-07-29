@@ -10,6 +10,11 @@ on:
       - 'poetry.lock'
       - '.github/workflows/pr-checks.yml'
 
+permissions:
+  contents: write
+  checks: write
+  pull-requests: write
+
 jobs:
   test-python:
     runs-on: ubuntu-latest
