@@ -1,7 +1,14 @@
+# This Projects
+generate_project_summary.py
+pycodemetrics_project_summary.txt
+.DS_Store
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+src/*.py[cod]
 
 # C extensions
 *.so
