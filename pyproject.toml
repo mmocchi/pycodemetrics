@@ -28,6 +28,7 @@ pytest-cov = "^5.0.0"
 pytest-mock = "^3.14.0"
 ruff = "^0.5.5"
 taskipy = "^1.13.0"
+pre-commit = "^3.8.0"
 
 [tool.poetry.scripts]
 pycodemetrics = "pycodemetrics.__main__:main"
