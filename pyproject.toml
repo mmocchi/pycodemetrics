@@ -24,9 +24,10 @@ types-tqdm = "^4.66.0.20240417"
 chardet = "^5.2.0"
 mypy = "^1.11.0"
 pytest = "^8.3.2"
-taskipy = "^1.13.0"
+pytest-cov = "^5.0.0"
 pytest-mock = "^3.14.0"
 ruff = "^0.5.5"
+taskipy = "^1.13.0"
 
 [tool.poetry.scripts]
 pycodemetrics = "pycodemetrics.__main__:main"
@@ -36,18 +37,33 @@ build-backend = "poetry.core.masonry.api"
 requires = ["poetry-core"]
 
 [tool.pytest.ini_options]
+addopts = "--cov=src/pycodemetrics --cov-report=term-missing --cov-report=xml"
 pythonpath = ["src"]
-testpaths = ["tests",]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/pycodemetrics"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "pass",
+  "except ImportError:",
+]
 
 [tool.taskipy.tasks]
-test = "pytest tests"
-mypy = "mypy src"
 lint = "ruff check ."
+mypy = "mypy src"
 summary = "python generate_project_summary.py"
+test = "pytest tests"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "C90", "I"]
 ignore = ["E501"]
+select = ["E", "F", "W", "C90", "I"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
