@@ -1,11 +1,10 @@
 import ast
-from dataclasses import dataclass
 
 from cognitive_complexity.api import get_cognitive_complexity
+from pydantic import BaseModel
 
 
-@dataclass
-class FunctionCognitiveComplexity:
+class FunctionCognitiveComplexity(BaseModel, frozen=True):
     """
     関数の認知的複雑度を表すデータクラス。
 
@@ -46,5 +45,5 @@ def get_function_cognitive_complexity(
     results = []
     for funcdef in funcdefs:
         complexity = get_cognitive_complexity(funcdef)
-        results.append(FunctionCognitiveComplexity(funcdef.name, complexity))
+        results.append(FunctionCognitiveComplexity(function_name=funcdef.name, complexity=complexity))
     return results

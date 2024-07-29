@@ -1,6 +1,6 @@
-from dataclasses import asdict, dataclass
 from enum import Enum
 
+from pydantic import BaseModel
 from radon.metrics import mi_visit
 from radon.raw import analyze
 from radon.visitors import Class, ComplexityVisitor, Function
@@ -12,8 +12,7 @@ class BlockType(Enum):
     CLASS = "Class"
     UNKNOWN = "Unknown"
 
-@dataclass
-class RawMetrics:
+class RawMetrics(BaseModel, frozen=True):
     """
     生のコードメトリクスを表すデータクラス。
 
@@ -36,12 +35,11 @@ class RawMetrics:
     multi: int
     blank: int
 
-    def to_dict(self):
-        return asdict(self)
+    def to_dict(self) -> dict:
+        return self.model_dump()
 
 
-@dataclass
-class BlockMetrics:
+class BlockMetrics(BaseModel, frozen=True):
     """
     コードブロックのメトリクスを表すデータクラス。
 
