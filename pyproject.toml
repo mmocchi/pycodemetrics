@@ -43,6 +43,7 @@ testpaths = ["tests",]
 test = "pytest tests"
 mypy = "mypy src"
 lint = "ruff check ."
+summary = "python generate_project_summary.py"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I"]
