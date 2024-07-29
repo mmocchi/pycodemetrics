@@ -1,6 +1,6 @@
 import click
 
-from pycodemetrics.services.analyze_python_metrics import analyze_git_repo
+from pycodemetrics.cli.analyze_python_metrics import run_analyze_python_metrics
 
 
 @click.group()
@@ -10,7 +10,7 @@ def cli():
 
 @click.command()
 def analyze():
-    analyze_git_repo(".")
+    run_analyze_python_metrics(".")
 
 
 cli.add_command(analyze)

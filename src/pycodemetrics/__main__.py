@@ -1,4 +1,4 @@
-from pycodemetrics.cli import cli
+from pycodemetrics.cli.cli import cli
 
 if __name__ == "__main__":
     cli()

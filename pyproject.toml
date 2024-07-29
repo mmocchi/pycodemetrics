@@ -7,9 +7,6 @@ version = "0.1.0"
 
 packages = [{include = "pycodemetrics", from = "src"}]
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
 [tool.poetry.dependencies]
 click = "^8.1.7"
 cognitive-complexity = "^1.3.0"
