@@ -25,6 +25,11 @@ chardet = "^5.2.0"
 mypy = "^1.11.0"
 pytest = "^8.3.2"
 taskipy = "^1.13.0"
+pytest-mock = "^3.14.0"
+ruff = "^0.5.5"
+
+[tool.poetry.scripts]
+pycodemetrics = "pycodemetrics.__main__:main"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
@@ -37,3 +42,14 @@ testpaths = ["tests",]
 [tool.taskipy.tasks]
 test = "pytest tests"
 mypy = "mypy src"
+lint = "ruff check ."
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 10

@@ -1,9 +1,14 @@
-from pycodemetrics.services.analyze_python_metrics import analyze_python_file, PythonFileMetrics
-from pycodemetrics.gitclient.gitcli import list_git_files
-
-from tqdm import tqdm
 import logging
+
+import pandas as pd
 import tabulate
+from tqdm import tqdm
+
+from pycodemetrics.gitclient.gitcli import list_git_files
+from pycodemetrics.services.analyze_python_metrics import (
+    PythonFileMetrics,
+    analyze_python_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +21,7 @@ def _analyze_python_metrics(target_file_paths: list[str]) -> list[PythonFileMetr
         if not filepath.endswith(".py"):
             logger.warning(f"Skipping {filepath} as it is not a python file")
             continue
-    
+
         try:
             result = analyze_python_file(filepath)
             results.append(result)
@@ -25,8 +30,12 @@ def _analyze_python_metrics(target_file_paths: list[str]) -> list[PythonFileMetr
             continue
     return results
 
+def _transform_for_display(results: list[PythonFileMetrics]) -> pd.DataFrame:
+    results_flat = [result.to_flat() for result in results]
+    return pd.DataFrame(results_flat, columns=results_flat[0].keys())
+
 def run_analyze_python_metrics(repo_path: str):
     target_file_paths = _get_target_files(repo_path)
     results = _analyze_python_metrics(target_file_paths)
-
-    return results
+    results_df = _transform_for_display(results)
+    print(tabulate.tabulate(results_df, headers="keys"))

@@ -3,7 +3,6 @@ import logging
 import os
 from dataclasses import dataclass
 
-from pycodemetrics.gitclient.gitcli import list_git_files
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
 
 logger = logging.getLogger(__name__)
@@ -50,5 +49,5 @@ def _open(filepath: str) -> str:
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"{filepath} is not found")
 
-    with open(filepath, "r") as f:
+    with open(filepath) as f:
         return f.read()
