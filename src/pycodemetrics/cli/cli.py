@@ -9,8 +9,9 @@ def cli():
 
 
 @click.command()
-def analyze():
-    run_analyze_python_metrics(".")
+@click.option('--dir_path', default=".", help='Directory path to analyze. Default is current directory.')
+def analyze(dir_path: str):
+    run_analyze_python_metrics(dir_path)
 
 
 cli.add_command(analyze)

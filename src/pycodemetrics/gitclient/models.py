@@ -1,4 +1,4 @@
-import datetime as date
+import datetime as dt
 
 
 class GitFileCommitLog:
@@ -7,7 +7,7 @@ class GitFileCommitLog:
         filepath: str,
         commit_hash: str,
         author: str,
-        commit_date: date,
+        commit_date: dt.datetime,
         message: str,
     ):
         self.commit_hash = commit_hash

@@ -17,7 +17,16 @@ class ImportAnalyzer(ast.NodeVisitor):
         return self.imports
 
 
-def analyze_import_counts(code):
+def analyze_import_counts(code) -> int:
+    """
+    指定されたコードのインポートの数をカウントします。
+
+    Args:
+        code (str): 分析するコード
+
+    Returns:
+        int: インポートの数
+    """
     tree = ast.parse(code)
     analyzer = ImportAnalyzer()
     analyzer.visit(tree)

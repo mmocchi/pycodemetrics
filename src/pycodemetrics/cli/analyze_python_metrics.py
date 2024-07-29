@@ -38,4 +38,5 @@ def run_analyze_python_metrics(repo_path: str):
     target_file_paths = _get_target_files(repo_path)
     results = _analyze_python_metrics(target_file_paths)
     results_df = _transform_for_display(results)
-    print(tabulate.tabulate(results_df, headers="keys"))
+    result_table = tabulate.tabulate(results_df, headers="keys") #type: ignore
+    print(result_table)

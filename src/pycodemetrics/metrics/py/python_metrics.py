@@ -29,7 +29,7 @@ class PythonCodeMetrics:
 
 def compute_metrics(code: str) -> PythonCodeMetrics:
     metrics = {}
-    metrics.update(get_raw_metrics(code))
+    metrics.update(get_raw_metrics(code).to_dict())
     metrics["import_count"] = analyze_import_counts(code)
     metrics["cyclomatic_complexity"] = get_complexity(code)
     metrics["maintainability_index"] = get_maintainability_index(code)

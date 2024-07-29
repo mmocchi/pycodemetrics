@@ -11,7 +11,7 @@ def _check_git_repo(git_repo_path: str) -> None:
 
 def _run_command(
     cmd: str, cwd: str, encording: str = "utf-8", timeout_seconds: int = 0
-) -> str:
+) -> list[str]:
     p = subprocess.Popen(
         cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
