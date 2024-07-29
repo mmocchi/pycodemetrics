@@ -15,6 +15,13 @@ class PythonFileMetrics:
     product_or_test: str
     metrics: PythonCodeMetrics
 
+    def to_flat(self):
+        return {
+            "filepath": self.filepath,
+            "product_or_test": self.product_or_test,
+            **self.metrics.to_dict(),
+        }
+
 
 def analyze_git_repo(repo_path: str) -> list[PythonFileMetrics]:
     target_files = [f for f in list_git_files(repo_path) if f.endswith(".py")]
@@ -31,6 +38,7 @@ def analyze_python_files(filepath_list: list[str]) -> list[PythonFileMetrics]:
             results.append(analyze_python_file(filepath))
         except Exception as e:
             logger.warning(f"Skipping {filepath} cause of error: {e}")
+
     return results
 
 

@@ -35,9 +35,7 @@ class BlockType(Enum):
     UNKNOWN = "Unknown"
 
 
-def get_maintainability_index(filepath: str) -> float:
-    with open(filepath, "r") as f:
-        code = f.read()
+def get_maintainability_index(code: str) -> float:
     return mi_visit(code, True)
 
 
