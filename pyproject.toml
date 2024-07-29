@@ -72,5 +72,10 @@ convention = "google"
 [tool.ruff.lint.pylint]
 max-args = 10
 
+[tool.ruff.per-file-ignores]
+# 個別設定
+# __init__.pyは未使用インポートを許容
+"__init__.py" = ["F401"]
+
 [tool.mypy]
 ignore_missing_imports = true
