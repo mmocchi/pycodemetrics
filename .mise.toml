@@ -3,3 +3,9 @@ python="3.12.1"
 
 [env]
 _.python.venv = ".venv"
+
+[tasks."act:ls"]
+run = "act --container-architecture linux/amd64 -l"
+
+[tasks."act:run:test-python"]
+run = "act --container-architecture linux/amd64 -j test-python"
