@@ -3,6 +3,7 @@ name: PR Checks
 on:
   pull_request:
     branches: [ main ]
+    types: [opened, reopened, synchronize]
     paths:
       - '**.py'
       - 'pyproject.toml'
@@ -23,9 +24,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
         poetry install
-    - name: Run tests
-      run: poetry run pytest tests
     - name: Run lint
       run: poetry run ruff check .
     - name: Run mypy
       run: poetry run mypy src
+    - name: Run tests
+      run: |
+        set -o pipefail
+        poetry run pytest tests/ --cov=src/ --junitxml=pytest.xml --cov-report=term-missing | tee pytest-coverage.txt
+    - name: Pytest coverage comment
+      uses: MishaKav/pytest-coverage-comment@v1.1.47
+      with:
+        pytest-coverage-path: ./pytest-coverage.txt
+        junitxml-path: ./pytest.xml
