@@ -38,7 +38,7 @@ jobs:
         set -o pipefail
         poetry run pytest tests/ --cov=src/ --junitxml=pytest.xml --cov-report=term-missing | tee pytest-coverage.txt
     - name: Pytest coverage comment
-      uses: MishaKav/pytest-coverage-comment@v1.1.47
+      uses: MishaKav/pytest-coverage-comment@v1.1.52
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         junitxml-path: ./pytest.xml
