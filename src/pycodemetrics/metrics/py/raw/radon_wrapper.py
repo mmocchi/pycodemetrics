@@ -41,12 +41,10 @@ def get_maintainability_index(filepath: str) -> float:
     return mi_visit(code, True)
 
 
-def get_complexity(filepath: str) -> int:
+def get_complexity(code: str) -> int:
     """
-    Get the total complexity of a file
+    Get the total complexity of a python code
     """
-    with open(filepath, "r") as f:
-        code = f.read()
     return ComplexityVisitor.from_code(code).total_complexity
 
 
@@ -63,9 +61,7 @@ def _get_block_type(block) -> BlockType:
     return BlockType.UNKNOWN
 
 
-def get_block_complexity(filepath: str) -> list[BlockMetrics]:
-    with open(filepath, "r") as f:
-        code = f.read()
+def get_block_complexity(code: str) -> list[BlockMetrics]:
     blocks = ComplexityVisitor.from_code(code).blocks
     return [
         BlockMetrics(
@@ -78,9 +74,7 @@ def get_block_complexity(filepath: str) -> list[BlockMetrics]:
     ]
 
 
-def get_raw_metrics(filepath: str) -> RawMetrics:
-    with open(filepath, "r") as f:
-        code = f.read()
+def get_raw_metrics(code: str) -> RawMetrics:
     raw = analyze(code)
     return RawMetrics(
         lines_of_code=raw.loc,

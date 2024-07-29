@@ -11,15 +11,11 @@ class FunctionCognitiveComplexity:
 
 
 def get_function_cognitive_complexity(
-    file_path: str,
+    code: str,
 ) -> list[FunctionCognitiveComplexity]:
     """
     Compute the cognitive complexity of a code snippet.
     """
-
-    with open(file_path, "r") as f:
-        code = f.read()
-
     tree = ast.parse(code)
 
     funcdefs = (

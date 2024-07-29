@@ -1,5 +1,6 @@
 import ast
 
+
 class ImportAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.imports = []
@@ -10,19 +11,14 @@ class ImportAnalyzer(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         for alias in node.names:
-            self.imports.append(node.module + '.' + alias.name)
+            self.imports.append(node.module + "." + alias.name)
 
     def get_imports(self):
         return self.imports
 
 
-def _analyze_import_counts(code):
+def analyze_import_counts(code):
     tree = ast.parse(code)
     analyzer = ImportAnalyzer()
     analyzer.visit(tree)
     return len(analyzer.get_imports())
-
-def analyze_import_counts(filepath):
-    with open(filepath, "r") as f:
-        code = f.read()
-    return _analyze_import_counts(code)

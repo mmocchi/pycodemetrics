@@ -35,6 +35,7 @@ requires = ["poetry-core"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+testpaths = ["tests",]
 
 [tool.taskipy.tasks]
 test = "pytest tests"
