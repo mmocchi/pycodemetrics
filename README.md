@@ -42,4 +42,4 @@ PyCodeMetricsは、Pythonプロジェクトのコードメトリクスを収集�
 `main.py`を実行して、メトリクスを収集および解析します。
 
 ```sh
-poetry run python pycodemetrics/main.py
+poetry run pycodemetrics analyze --dir_path .
