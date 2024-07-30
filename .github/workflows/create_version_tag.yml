@@ -34,7 +34,7 @@ jobs:
         import sys
 
         new_version = "${{ github.event.inputs.version }}"
-        is_prerelease = ${{ github.event.inputs.is_prerelease }} == 'true'
+        is_prerelease = "${{ github.event.inputs.is_prerelease }}" == "true"
         print(f"Input parameters: {new_version}, {is_prerelease}")
 
         tag_version = new_version + '-rc' if is_prerelease else new_version
