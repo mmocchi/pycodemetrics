@@ -1,20 +1,39 @@
 repos:
-  - repo: local
+# Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
     hooks:
+      # Run the linter.
       - id: ruff
         name: ruff
-        entry: ruff
-        language: system
-        types_or:
-          - python
-          - pyi
+        description: "Run 'ruff' for extremely fast Python linting"
+        entry: ruff check --force-exclude
+        language: python
+        types_or: [python, pyi]
+        # --fix: enable lint fixes
+        args: [--fix]
         require_serial: true
-      - id: mypy
-        name: mypy
-        entry: mypy
-        language: system
-        types_or:
-          - python
-          - pyi
+        additional_dependencies: []
+        minimum_pre_commit_version: "2.9.2"
+      # Run the formatter.
+      - id: ruff-format
+        name: ruff-format
+        description: "Run 'ruff format' for extremely fast Python formatting"
+        entry: ruff format --force-exclude
+        language: python
+        types_or: [python, pyi]
+        args: []
         require_serial: true
-        pass_filenames: false
+        additional_dependencies: []
+        minimum_pre_commit_version: "2.9.2"
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
