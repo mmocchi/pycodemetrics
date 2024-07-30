@@ -9,7 +9,7 @@ on:
       is_prerelease:
         description: 'Is this a pre-release?'
         type: boolean
-        default: false
+        default: true
 
 jobs:
   create-tag:
@@ -34,7 +34,7 @@ jobs:
         import sys
 
         new_version = "${{ github.event.inputs.version }}"
-        is_prerelease = ${{ github.event.inputs.is_prerelease }}
+        is_prerelease = ${{ github.event.inputs.is_prerelease }} == 'true'
 
         tag_version = new_version + '-rc' if is_prerelease else new_version
 
