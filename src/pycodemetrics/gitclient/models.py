@@ -3,7 +3,7 @@ import datetime as dt
 from pydantic import BaseModel
 
 
-class GitFileCommitLog(BaseModel, fronzen=True):
+class GitFileCommitLog(BaseModel, frozen=True):
     filepath: str
     commit_hash: str
     author: str

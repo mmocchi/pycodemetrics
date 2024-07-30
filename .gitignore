@@ -2,6 +2,7 @@
 generate_project_summary.py
 pycodemetrics_project_summary.txt
 .DS_Store
+.vscode/
 
 
 # Byte-compiled / optimized / DLL files
