@@ -12,8 +12,10 @@ from pycodemetrics.services.analyze_python_metrics import (
 
 logger = logging.getLogger(__name__)
 
+
 def _get_target_files(repo_path: str) -> list[str]:
     return [f for f in list_git_files(repo_path) if f.endswith(".py")]
+
 
 def _analyze_python_metrics(target_file_paths: list[str]) -> list[PythonFileMetrics]:
     results = []
@@ -30,13 +32,15 @@ def _analyze_python_metrics(target_file_paths: list[str]) -> list[PythonFileMetr
             continue
     return results
 
+
 def _transform_for_display(results: list[PythonFileMetrics]) -> pd.DataFrame:
     results_flat = [result.to_flat() for result in results]
     return pd.DataFrame(results_flat, columns=results_flat[0].keys())
+
 
 def run_analyze_python_metrics(repo_path: str):
     target_file_paths = _get_target_files(repo_path)
     results = _analyze_python_metrics(target_file_paths)
     results_df = _transform_for_display(results)
-    result_table = tabulate.tabulate(results_df, headers="keys") #type: ignore
+    result_table = tabulate.tabulate(results_df, headers="keys")  # type: ignore
     print(result_table)
