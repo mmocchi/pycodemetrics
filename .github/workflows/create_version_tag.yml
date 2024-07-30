@@ -1,0 +1,74 @@
+name: Create Version Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version number (e.g., 1.0.0)'
+        required: true
+      is_prerelease:
+        description: 'Is this a pre-release?'
+        type: boolean
+        default: false
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install toml
+    - name: Create and push tag
+      run: |
+        python - <<EOF
+        import toml
+        import subprocess
+        import sys
+
+        new_version = "${{ github.event.inputs.version }}"
+        is_prerelease = ${{ github.event.inputs.is_prerelease }}
+
+        tag_version = new_version + '-rc' if is_prerelease else new_version
+
+        # Check if the tag already exists
+        existing_tag = f"v{tag_version}"
+        result = subprocess.run(['git', 'rev-parse', '--verify', existing_tag], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"Error: Tag {existing_tag} already exists")
+            sys.exit(1)
+
+        if not is_prerelease:
+            rc_tag = f"v{new_version}-rc"
+            result = subprocess.run(['git', 'rev-parse', '--verify', rc_tag], capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"Error: No corresponding RC tag ({rc_tag}) found for this release")
+                sys.exit(1)
+
+        # Update pyproject.toml
+        with open('pyproject.toml', 'r') as f:
+            data = toml.load(f)
+        data['tool']['poetry']['version'] = new_version
+        with open('pyproject.toml', 'w') as f:
+            toml.dump(data, f)
+
+        # Commit changes
+        subprocess.run(['git', 'config', 'user.name', 'github-actions'])
+        subprocess.run(['git', 'config', 'user.email', 'github-actions@github.com'])
+        subprocess.run(['git', 'add', 'pyproject.toml'])
+        subprocess.run(['git', 'commit', '-m', f'Bump version to {new_version}'])
+
+        # Create and push tag
+        tag = f'v{tag_version}'
+        subprocess.run(['git', 'tag', tag])
+        subprocess.run(['git', 'push', 'origin', 'main', tag])
+
+        print(f"Successfully created and pushed tag: {tag}")
+        EOF

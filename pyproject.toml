@@ -1,9 +1,12 @@
 [tool.poetry]
-authors = ["mmocchi"]
-description = ""
+authors = ["mmocchi <akihiro.matsumoto.exe@gmail.com>"]
+description = "Python code metrics tool"
 name = "pycodemetrics"
+homepage = "https://github.com/mmocchi"
+repository = "https://github.com/mmocchi/pycodemetrics"
 readme = "README.md"
-version = "0.1.0"
+version = "0.0.2"
+license = "MIT"
 
 packages = [{include = "pycodemetrics", from = "src"}]
 
@@ -29,6 +32,7 @@ pytest-mock = "^3.14.0"
 ruff = "^0.5.5"
 taskipy = "^1.13.0"
 pre-commit = "^3.8.0"
+toml = "^0.10.2"
 
 [tool.poetry.scripts]
 pycodemetrics = "pycodemetrics.__main__:main"
