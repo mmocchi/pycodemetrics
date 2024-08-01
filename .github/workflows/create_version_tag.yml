@@ -31,7 +31,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install poetry toml requests
+        pip install poetry toml
+
+    - name: Get current commit SHA
+      id: get-sha
+      run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
     - name: Update version in pyproject.toml
       id: update-version
@@ -39,40 +43,35 @@ jobs:
         python - <<EOF
         import toml
         import os
-        import requests
 
-        def get_latest_build_number(version):
-            url = f"https://test.pypi.org/pypi/pycodemetrics/{version}/json"
-            response = requests.get(url)
-            if response.status_code == 200:
-                releases = response.json()['releases']
-                build_numbers = [int(release.split('.')[-1]) for release in releases if release.startswith(f"{version}+")]
-                return max(build_numbers) if build_numbers else 0
-            return 0
+        try:
+            with open('pyproject.toml', 'r') as f:
+                data = toml.load(f)
 
-        with open('pyproject.toml', 'r') as f:
-            data = toml.load(f)
+            old_version = data['tool']['poetry']['version']
+            new_version = '${{ github.event.inputs.version }}'
+            commit_sha = '${{ steps.get-sha.outputs.sha }}'
 
-        old_version = data['tool']['poetry']['version']
-        new_version = '${{ github.event.inputs.version }}'
+            if old_version != new_version:
+                print("Version updated from {} to {}".format(old_version, new_version))
+                print("version_changed=true")
+            else:
+                print("Base version unchanged: {}".format(old_version))
+                print("version_changed=false")
 
-        if old_version != new_version:
-            data['tool']['poetry']['version'] = new_version
-            print("Version updated from {} to {}".format(old_version, new_version))
-            print("version_changed=true")
-        else:
-            print("Version unchanged: {}".format(old_version))
+            # Always add commit SHA to the version for TestPyPI
+            full_version = f"{new_version}+{commit_sha}"
+            data['tool']['poetry']['version'] = full_version
+
+            with open('pyproject.toml', 'w') as f:
+                toml.dump(data, f)
+
+            print(f"version={full_version}")
+
+        except Exception as e:
+            print(f"Error updating pyproject.toml: {e}")
             print("version_changed=false")
-
-        # Add build number for TestPyPI
-        latest_build = get_latest_build_number(new_version)
-        new_build = latest_build + 1
-        data['tool']['poetry']['version'] = f"{new_version}+{new_build}"
-
-        with open('pyproject.toml', 'w') as f:
-            toml.dump(data, f)
-
-        print(f"version={new_version}+{new_build}")
+            print(f"version={new_version}")
         EOF
 
         # Set the outputs for the step
