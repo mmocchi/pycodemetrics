@@ -1,4 +1,4 @@
-name: Create Version Tag
+name: Create Tag and Test Release
 
 on:
   workflow_dispatch:
@@ -6,72 +6,81 @@ on:
       version:
         description: 'New version number (e.g., 1.0.0)'
         required: true
-      is_prerelease:
-        description: 'Is this a pre-release?'
-        type: boolean
-        default: true
+
+permissions:
+  contents: write
+  actions: write
 
 jobs:
-  create-tag:
+  create-tag-and-release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+    - uses: actions/checkout@v2
+
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v2
       with:
         python-version: '3.12'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install toml
-    - name: Create and push tag
-      env:
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        pip install poetry toml
+
+    - name: Update version in pyproject.toml
       run: |
         python - <<EOF
         import toml
-        import subprocess
-        import sys
 
-        new_version = "${{ github.event.inputs.version }}"
-        is_prerelease = "${{ github.event.inputs.is_prerelease }}" == "true"
-        print(f"Input parameters: {new_version}, {is_prerelease}")
-
-        tag_version = new_version + '-rc' if is_prerelease else new_version
-
-        # Check if the tag already exists
-        existing_tag = f"v{tag_version}"
-        result = subprocess.run(['git', 'rev-parse', '--verify', existing_tag], capture_output=True, text=True)
-        if result.returncode == 0:
-            print(f"Error: Tag {existing_tag} already exists")
-            sys.exit(1)
-
-        if not is_prerelease:
-            rc_tag = f"v{new_version}-rc"
-            result = subprocess.run(['git', 'rev-parse', '--verify', rc_tag], capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"Error: No corresponding RC tag ({rc_tag}) found for this release")
-                sys.exit(1)
-
-        # Update pyproject.toml
         with open('pyproject.toml', 'r') as f:
             data = toml.load(f)
-        data['tool']['poetry']['version'] = new_version
+
+        data['tool']['poetry']['version'] = '${{ github.event.inputs.version }}'
+
         with open('pyproject.toml', 'w') as f:
             toml.dump(data, f)
-
-        # Commit changes
-        subprocess.run(['git', 'config', 'user.name', 'github-actions'])
-        subprocess.run(['git', 'config', 'user.email', 'github-actions@github.com'])
-        subprocess.run(['git', 'add', 'pyproject.toml'])
-        subprocess.run(['git', 'commit', '-m', f'Bump version to {new_version}'])
-
-        # Create and push tag
-        tag = f'v{tag_version}'
-        subprocess.run(['git', 'tag', tag])
-        subprocess.run(['git', 'push', 'origin', 'main', tag])
-
-        print(f"Successfully created and pushed tag: {tag}")
         EOF
+
+    - name: Commit changes
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add pyproject.toml
+        git commit -m "Bump version to ${{ github.event.inputs.version }}"
+        git push
+
+    - name: Create and push tag
+      run: |
+        git tag v${{ github.event.inputs.version }}
+        git push origin v${{ github.event.inputs.version }}
+
+    - name: Build package
+      run: poetry build
+
+    - name: Upload to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+
+    - name: Create Draft Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: Release v${{ github.event.inputs.version }}
+        draft: true
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/*.whl
+        asset_name: package-${{ github.event.inputs.version }}.whl
+        asset_content_type: application/octet-stream
