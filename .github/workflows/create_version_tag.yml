@@ -18,14 +18,15 @@ jobs:
   create-tag-and-release:
     runs-on: ubuntu-latest
     steps:
+
     # リポジトリをチェックアウト
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     # Pythonのセットアップ
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
@@ -125,7 +126,7 @@ jobs:
 
     # TestPyPIにアップロード
     - name: Upload to TestPyPI
-      uses: pypa/gh-action-pypi-publish@v1.8.10
+      uses: pypa/gh-action-pypi-publish@v1.9.0
       with:
         user: __token__
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}

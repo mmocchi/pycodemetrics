@@ -9,7 +9,7 @@ name = "pycodemetrics"
 homepage = "https://github.com/mmocchi"
 repository = "https://github.com/mmocchi/pycodemetrics"
 readme = "README.md"
-version = "0.0.2"
+version = "0.0.8"
 license = "MIT"
 [[tool.poetry.packages]]
 include = "pycodemetrics"
