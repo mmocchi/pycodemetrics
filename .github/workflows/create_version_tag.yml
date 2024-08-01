@@ -6,10 +6,6 @@ on:
       version:
         description: 'New version number (e.g., 1.0.0)'
         required: true
-      allow_tag_override:
-        description: 'Allow overwriting existing tag'
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -31,47 +27,53 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install poetry toml
+        pip install poetry toml requests
 
-    - name: Get current commit SHA
-      id: get-sha
-      run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    - name: Check if tag exists
+      id: check-tag
+      run: |
+        if git rev-parse "v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
+          echo "Error: Tag v${{ github.event.inputs.version }} already exists."
+          exit 1
+        fi
+
+    - name: Check if version exists on TestPyPI
+      run: |
+        python - <<EOF
+        import requests
+        package_name = "pycodemetrics"  # Replace with your package name
+        version = "${{ github.event.inputs.version }}"
+        url = f"https://test.pypi.org/pypi/{package_name}/{version}/json"
+        response = requests.get(url)
+        if response.status_code == 200:
+          print(f"Error: Version {version} already exists on TestPyPI.")
+          exit(1)
+        print(f"Version {version} does not exist on TestPyPI. Proceeding with release.")
+        EOF
 
     - name: Update version in pyproject.toml
       id: update-version
       run: |
         python - <<EOF
         import toml
-        import os
 
-        try:
-            with open('pyproject.toml', 'r') as f:
-                data = toml.load(f)
+        with open('pyproject.toml', 'r') as f:
+            data = toml.load(f)
 
-            old_version = data['tool']['poetry']['version']
-            new_version = '${{ github.event.inputs.version }}'
-            commit_sha = '${{ steps.get-sha.outputs.sha }}'
+        old_version = data['tool']['poetry']['version']
+        new_version = '${{ github.event.inputs.version }}'
 
-            if old_version != new_version:
-                print("Version updated from {} to {}".format(old_version, new_version))
-                print("version_changed=true")
-            else:
-                print("Base version unchanged: {}".format(old_version))
-                print("version_changed=false")
-
-            # Always add commit SHA to the version for TestPyPI
-            full_version = f"{new_version}+{commit_sha}"
-            data['tool']['poetry']['version'] = full_version
-
+        if old_version != new_version:
+            data['tool']['poetry']['version'] = new_version
             with open('pyproject.toml', 'w') as f:
                 toml.dump(data, f)
-
-            print(f"version={full_version}")
-
-        except Exception as e:
-            print(f"Error updating pyproject.toml: {e}")
+            print("Version updated from {} to {}".format(old_version, new_version))
+            print("version_changed=true")
+        else:
+            print("Version unchanged: {}".format(old_version))
             print("version_changed=false")
-            print(f"version={new_version}")
+
+        print(f"version={new_version}")
         EOF
 
         # Set the outputs for the step
@@ -91,32 +93,10 @@ jobs:
         git commit -m "Bump version to ${{ steps.update-version.outputs.version }}"
         git push
 
-    - name: Check if tag exists
-      id: check-tag
-      run: |
-        if git rev-parse "v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
-          echo "tag_exists=true" >> $GITHUB_OUTPUT
-        else
-          echo "tag_exists=false" >> $GITHUB_OUTPUT
-        fi
-
     - name: Create new tag
-      if: steps.check-tag.outputs.tag_exists == 'false'
       run: |
         git tag v${{ github.event.inputs.version }}
         git push origin v${{ github.event.inputs.version }}
-
-    - name: Override existing tag
-      if: steps.check-tag.outputs.tag_exists == 'true' && github.event.inputs.allow_tag_override == 'true'
-      run: |
-        git tag -f v${{ github.event.inputs.version }}
-        git push -f origin v${{ github.event.inputs.version }}
-
-    - name: Fail if tag exists and override not allowed
-      if: steps.check-tag.outputs.tag_exists == 'true' && github.event.inputs.allow_tag_override != 'true'
-      run: |
-        echo "Error: Tag v${{ github.event.inputs.version }} already exists and tag override is not allowed."
-        exit 1
 
     - name: Build package
       run: poetry build
@@ -128,15 +108,12 @@ jobs:
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
 
-    - name: Create or update release
+    - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if gh release view v${{ github.event.inputs.version }} &>/dev/null; then
-          gh release delete v${{ github.event.inputs.version }} --yes
-        fi
-        gh release create v${{ github.event.inputs.version }} \
-          --title "Release v${{ github.event.inputs.version }}" \
+        gh release create v${{ steps.update-version.outputs.version }} \
+          --title "Release v${{ steps.update-version.outputs.version }}" \
           --draft \
           --generate-notes \
           ./dist/*.whl
