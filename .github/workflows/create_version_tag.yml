@@ -30,7 +30,6 @@ jobs:
         pip install poetry toml requests
 
     - name: Check if tag exists
-      id: check-tag
       run: |
         if git rev-parse "v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
           echo "Error: Tag v${{ github.event.inputs.version }} already exists."
@@ -56,33 +55,40 @@ jobs:
       run: |
         python - <<EOF
         import toml
+        import sys
 
-        with open('pyproject.toml', 'r') as f:
-            data = toml.load(f)
+        try:
+            with open('pyproject.toml', 'r') as f:
+                data = toml.load(f)
 
-        old_version = data['tool']['poetry']['version']
-        new_version = '${{ github.event.inputs.version }}'
+            old_version = data['tool']['poetry']['version']
+            new_version = '${{ github.event.inputs.version }}'
 
-        if old_version != new_version:
-            data['tool']['poetry']['version'] = new_version
-            with open('pyproject.toml', 'w') as f:
-                toml.dump(data, f)
-            print("Version updated from {} to {}".format(old_version, new_version))
-            print("version_changed=true")
-        else:
-            print("Version unchanged: {}".format(old_version))
-            print("version_changed=false")
+            if old_version != new_version:
+                data['tool']['poetry']['version'] = new_version
+                with open('pyproject.toml', 'w') as f:
+                    toml.dump(data, f)
+                print("version_changed=true")
+                print(f"old_version={old_version}")
+            else:
+                print("version_changed=false")
 
-        print(f"version={new_version}")
+            print(f"version={new_version}")
+        except Exception as e:
+            print(f"Error: {str(e)}", file=sys.stderr)
+            sys.exit(1)
         EOF
 
         # Set the outputs for the step
-        if grep -q "version_changed=true" <<< "$(python -)"; then
-          echo "version_changed=true" >> $GITHUB_OUTPUT
-        else
-          echo "version_changed=false" >> $GITHUB_OUTPUT
-        fi
+        echo "version_changed=$(python - | grep '^version_changed=' | cut -d'=' -f2)" >> $GITHUB_OUTPUT
         echo "version=$(python - | grep '^version=' | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+        echo "old_version=$(python - | grep '^old_version=' | cut -d'=' -f2 || echo '')" >> $GITHUB_OUTPUT
+
+    - name: Debug output
+      run: |
+        echo "Version changed: ${{ steps.update-version.outputs.version_changed }}"
+        echo "New version: ${{ steps.update-version.outputs.version }}"
+        echo "Old version: ${{ steps.update-version.outputs.old_version }}"
 
     - name: Commit and push changes
       if: steps.update-version.outputs.version_changed == 'true'
@@ -95,8 +101,8 @@ jobs:
 
     - name: Create new tag
       run: |
-        git tag v${{ github.event.inputs.version }}
-        git push origin v${{ github.event.inputs.version }}
+        git tag v${{ steps.update-version.outputs.version }}
+        git push origin v${{ steps.update-version.outputs.version }}
 
     - name: Build package
       run: poetry build
