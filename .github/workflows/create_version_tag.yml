@@ -53,7 +53,8 @@ jobs:
     - name: Update version in pyproject.toml
       id: update-version
       run: |
-        python - <<EOF
+        OUTPUT_FILE="${GITHUB_OUTPUT}"
+        python - <<EOF > "${OUTPUT_FILE}"
         import toml
         import sys
 
@@ -79,10 +80,7 @@ jobs:
             sys.exit(1)
         EOF
 
-        # Set the outputs for the step
-        echo "version_changed=$(python - | grep '^version_changed=' | cut -d'=' -f2)" >> $GITHUB_OUTPUT
-        echo "version=$(python - | grep '^version=' | cut -d'=' -f2)" >> $GITHUB_OUTPUT
-        echo "old_version=$(python - | grep '^old_version=' | cut -d'=' -f2 || echo '')" >> $GITHUB_OUTPUT
+        cat "${OUTPUT_FILE}"
 
     - name: Debug output
       run: |
