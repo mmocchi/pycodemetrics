@@ -50,12 +50,19 @@ jobs:
             data['tool']['poetry']['version'] = new_version
             with open('pyproject.toml', 'w') as f:
                 toml.dump(data, f)
-            print("version_changed=true" >> $GITHUB_OUTPUT)
-            print(f"Version updated from {old_version} to {new_version}")
+            print("Version updated from {} to {}".format(old_version, new_version))
+            print("version_changed=true")
         else:
-            print("version_changed=false" >> $GITHUB_OUTPUT)
-            print(f"Version unchanged: {old_version}")
+            print("Version unchanged: {}".format(old_version))
+            print("version_changed=false")
         EOF
+
+        # Set the output for the step
+        if grep -q "version_changed=true" <<< "$(python -)"; then
+          echo "version_changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "version_changed=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Commit and push changes
       if: steps.update-version.outputs.version_changed == 'true'
@@ -114,5 +121,4 @@ jobs:
           --title "Release v${{ github.event.inputs.version }}" \
           --draft \
           --generate-notes \
-          ./dist/*.whl \
-          ./dist/*.tar.gz
+          ./dist/*.whl
