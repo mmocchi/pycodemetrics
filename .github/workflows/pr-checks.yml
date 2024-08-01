@@ -1,3 +1,4 @@
+# PR作成時のチェックを行うワークフロー
 name: PR Checks
 
 on:
@@ -19,24 +20,32 @@ jobs:
   test-python:
     runs-on: ubuntu-latest
     steps:
+    # リポジトリをチェックアウト
     - uses: actions/checkout@v4
+
+    # Pythonのセットアップ
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
+    # 依存関係のインストール
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install poetry
         poetry install
+    # Lintの実行
     - name: Run lint
       run: poetry run ruff check .
+    # Mypyの実行
     - name: Run mypy
       run: poetry run mypy src
+    # テストの実行
     - name: Run tests
       run: |
         set -o pipefail
         poetry run pytest tests/ --cov=src/ --junitxml=pytest.xml --cov-report=term-missing | tee pytest-coverage.txt
+    # テストカバレッジをPRコメントとして追加
     - name: Pytest coverage comment
       uses: MishaKav/pytest-coverage-comment@v1.1.52
       with:
