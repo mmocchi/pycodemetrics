@@ -6,6 +6,10 @@ on:
       version:
         description: 'New version number (e.g., 1.0.0)'
         required: true
+      allow_tag_override:
+        description: 'Allow overwriting existing tag'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -16,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for all tags and branches
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,20 +34,31 @@ jobs:
         pip install poetry toml
 
     - name: Update version in pyproject.toml
+      id: update-version
       run: |
         python - <<EOF
         import toml
+        import os
 
         with open('pyproject.toml', 'r') as f:
             data = toml.load(f)
 
-        data['tool']['poetry']['version'] = '${{ github.event.inputs.version }}'
+        old_version = data['tool']['poetry']['version']
+        new_version = '${{ github.event.inputs.version }}'
 
-        with open('pyproject.toml', 'w') as f:
-            toml.dump(data, f)
+        if old_version != new_version:
+            data['tool']['poetry']['version'] = new_version
+            with open('pyproject.toml', 'w') as f:
+                toml.dump(data, f)
+            print("version_changed=true" >> $GITHUB_OUTPUT)
+            print(f"Version updated from {old_version} to {new_version}")
+        else:
+            print("version_changed=false" >> $GITHUB_OUTPUT)
+            print(f"Version unchanged: {old_version}")
         EOF
 
-    - name: Commit changes
+    - name: Commit and push changes
+      if: steps.update-version.outputs.version_changed == 'true'
       run: |
         git config user.name github-actions
         git config user.email github-actions@github.com
@@ -49,10 +66,32 @@ jobs:
         git commit -m "Bump version to ${{ github.event.inputs.version }}"
         git push
 
-    - name: Create and push tag
+    - name: Check if tag exists
+      id: check-tag
+      run: |
+        if git rev-parse "v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
+          echo "tag_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "tag_exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create new tag
+      if: steps.check-tag.outputs.tag_exists == 'false'
       run: |
         git tag v${{ github.event.inputs.version }}
         git push origin v${{ github.event.inputs.version }}
+
+    - name: Override existing tag
+      if: steps.check-tag.outputs.tag_exists == 'true' && github.event.inputs.allow_tag_override == 'true'
+      run: |
+        git tag -f v${{ github.event.inputs.version }}
+        git push -f origin v${{ github.event.inputs.version }}
+
+    - name: Fail if tag exists and override not allowed
+      if: steps.check-tag.outputs.tag_exists == 'true' && github.event.inputs.allow_tag_override != 'true'
+      run: |
+        echo "Error: Tag v${{ github.event.inputs.version }} already exists and tag override is not allowed."
+        exit 1
 
     - name: Build package
       run: poetry build
@@ -64,23 +103,16 @@ jobs:
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
 
-    - name: Create Draft Release
-      uses: actions/create-release@v1
+    - name: Create or update release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ github.event.inputs.version }}
-        release_name: Release v${{ github.event.inputs.version }}
-        draft: true
-        prerelease: false
-        generate_release_notes: true
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/*.whl
-        asset_name: package-${{ github.event.inputs.version }}.whl
-        asset_content_type: application/octet-stream
+      run: |
+        if gh release view v${{ github.event.inputs.version }} &>/dev/null; then
+          gh release delete v${{ github.event.inputs.version }} --yes
+        fi
+        gh release create v${{ github.event.inputs.version }} \
+          --title "Release v${{ github.event.inputs.version }}" \
+          --draft \
+          --generate-notes \
+          ./dist/*.whl \
+          ./dist/*.tar.gz
