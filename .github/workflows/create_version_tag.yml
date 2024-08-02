@@ -141,5 +141,5 @@ jobs:
           --title "Release v${{ steps.update-version.outputs.version }}" \
           --draft \
           --generate-notes \
-          ./dist/*.whl
+          ./dist/*.whl \
           ./dist/*.tar.gz
