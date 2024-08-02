@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics
 from pycodemetrics.services.analyze_python_metrics import (
@@ -41,7 +43,7 @@ def mock_compute_metrics(mocker):
 
 def test_analyze_python_file(mock_open, mock_compute_metrics):
     # Arrange: テスト用のファイルパスを準備
-    filepath = "src/example.py"
+    filepath = Path("src/example.py")
 
     # Act: analyze_python_file関数を実行
     result = analyze_python_file(filepath)
@@ -61,8 +63,8 @@ def test_is_tests_file():
     ファイルパスがテストファイルパターンに一致するかどうかを確認する。
     """
     # Arrange: テスト用のファイルパスを準備
-    test_file_path = "project/tests/test_example.py"
-    non_test_file_path = "project/src/example.py"
+    test_file_path = Path("project/tests/test_example.py")
+    non_test_file_path = Path("project/src/example.py")
 
     # Act & Assert: _is_tests_file関数を実行し、結果を確認
     assert _is_tests_file(test_file_path) is True
@@ -71,8 +73,8 @@ def test_is_tests_file():
 
 def test_get_product_or_test():
     # Arrange: テスト用のファイルパスを準備
-    test_file_path = "project/tests/test_example.py"
-    non_test_file_path = "project/src/example.py"
+    test_file_path = Path("project/tests/test_example.py")
+    non_test_file_path = Path("project/src/example.py")
 
     # Act & Assert: _is_tests_file関数を実行し、結果を確認
     assert get_product_or_test(test_file_path) == CodeType.TEST
@@ -85,7 +87,7 @@ def test_to_flat(mock_open, mock_compute_metrics):
     ファイルパスを入力として、正しいdictオブジェクトを返すことを確認する。
     """
     # Arrange: テスト用のファイルパスを準備
-    filepath = "src/example.py"
+    filepath = Path("src/example.py")
 
     # Act: analyze_python_file関数を実行
     result = analyze_python_file(filepath).to_flat()
@@ -109,11 +111,6 @@ def test_to_flat(mock_open, mock_compute_metrics):
     assert result == expected_metrics
 
 
-def test_open_Noneを渡してValueErrorが返ってくる():
-    with pytest.raises(ValueError):
-        _open(None)
-
-
 def test_open_存在しないパスを渡してFileNotFoundErrorが返ってくる():
     with pytest.raises(FileNotFoundError):
-        _open("__n/o/t_e/x/i/s/t_f/i/l/e_p/a/t/h__")
+        _open(Path("__n/o/t_e/x/i/s/t_f/i/l/e_p/a/t/h__"))
