@@ -21,10 +21,9 @@ pip install pycodemetrics
 ## 使用方法
 
 PyCodeMetricsを使用してプロジェクトを分析するには、以下のコマンドを実行します：
---dir_pathには.gitディレクトリが存在するディレクトリを指定してください。
 
 ```sh
-pycodemetrics analyze --dir_path /path/to/your/project
+pycodemetrics analyze --path /path/to/your/project
 ```
 
 このコマンドは指定されたディレクトリ内のPythonファイルを分析し、メトリクスのレポートを生成します。
