@@ -1,19 +1,23 @@
-import os
 import subprocess
+from pathlib import Path
 
 RETURN_CODE_SUCCESS = 0
 
 
-def _check_git_repo(git_repo_path: str) -> None:
-    if not os.path.exists(os.path.join(git_repo_path, ".git")):
+def _check_git_repo(git_repo_path: Path) -> None:
+    if not git_repo_path.joinpath(".git").exists():
         raise ValueError("Not a git repository")
 
 
 def _run_command(
-    cmd: str, cwd: str, encording: str = "utf-8", timeout_seconds: int = 0
+    cmd: str, current_dir: Path, encording: str = "utf-8", timeout_seconds: int = 0
 ) -> list[str]:
     p = subprocess.Popen(
-        cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        cmd,
+        cwd=current_dir.as_posix(),
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     try:
         if timeout_seconds > 0:
@@ -32,26 +36,26 @@ def _run_command(
 
 
 def list_git_files(
-    git_repo_path: str | None = None, encoding: str = "utf-8"
-) -> list[str]:
+    git_repo_path: Path | None = None, encoding: str = "utf-8"
+) -> list[Path]:
     """
     List all the files in the current repository.
     """
-    git_repo_path = git_repo_path or "."
+    git_repo_path = git_repo_path or Path.cwd()
 
     _check_git_repo(git_repo_path)
 
     cmd = "git ls-files"
-    return _run_command(cmd, git_repo_path, encoding)
+    return [Path(f) for f in _run_command(cmd, git_repo_path, encoding)]
 
 
 def get_file_gitlogs(
-    git_file_path, git_repo_path: str | None = None, encoding: str = "utf-8"
+    git_file_path: Path, git_repo_path: Path | None = None, encoding: str = "utf-8"
 ) -> list[str]:
     """
     Get the git logs for the current repository.
     """
-    git_repo_path = git_repo_path or "."
+    git_repo_path = git_repo_path or Path.cwd()
 
     _check_git_repo(git_repo_path)
 
@@ -59,8 +63,10 @@ def get_file_gitlogs(
     return _run_command(cmd, git_repo_path, encoding)
 
 
-def get_gitlogs(git_repo_path: str | None = None, encoding: str = "utf-8") -> list[str]:
-    git_repo_path = git_repo_path or "."
+def get_gitlogs(
+    git_repo_path: Path | None = None, encoding: str = "utf-8"
+) -> list[str]:
+    git_repo_path = git_repo_path or Path.cwd()
 
     _check_git_repo(git_repo_path)
 

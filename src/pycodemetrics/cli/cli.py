@@ -1,8 +1,12 @@
 from enum import IntEnum
+from pathlib import Path
 
 import click
 
-from pycodemetrics.cli.cli_analyze_python_metrics import run_analyze_python_metrics
+from pycodemetrics.cli.cli_analyze_python_metrics import (
+    InputTargetParameter,
+    run_analyze_python_metrics,
+)
 
 
 class RETURN_CODE(IntEnum):
@@ -29,7 +33,12 @@ def analyze(input_path: str, with_git_repo: bool):
 
     INPUT_PATH: Path to the target python file or directory.
     """
-    run_analyze_python_metrics(input_path, with_git_repo)
+
+    input_param = InputTargetParameter(
+        path=Path(input_path), with_git_repo=with_git_repo
+    )
+
+    run_analyze_python_metrics(input_param)
 
 
 cli.add_command(analyze)
