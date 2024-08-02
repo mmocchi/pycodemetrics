@@ -1,13 +1,14 @@
 import fnmatch
 import logging
-import os
 from enum import Enum
+from pathlib import Path
 
 from pydantic import BaseModel
 
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
 
 logger = logging.getLogger(__name__)
+
 
 class CodeType(Enum):
     PRODUCT = "product"
@@ -23,7 +24,8 @@ class PythonFileMetrics(BaseModel, frozen=True):
         product_or_test (CodeType): プロダクトコードかテストコードかを示す。
         metrics (PythonCodeMetrics): Pythonコードのメトリクス。
     """
-    filepath: str
+
+    filepath: Path
     product_or_test: CodeType
     metrics: PythonCodeMetrics
 
@@ -34,12 +36,13 @@ class PythonFileMetrics(BaseModel, frozen=True):
             **self.metrics.to_dict(),
         }
 
-def analyze_python_file(filepath: str):
+
+def analyze_python_file(filepath: Path):
     """
     指定されたPythonファイルを解析し、そのメトリクスを計算します。
 
     Args:
-        filepath (str): 解析するPythonファイルのパス。
+        filepath (Path): 解析するPythonファイルのパス。
 
     Returns:
         PythonFileMetrics: ファイルパス、ファイルタイプ、計算されたメトリクスを含むPythonFileMetricsオブジェクト。
@@ -53,23 +56,23 @@ def analyze_python_file(filepath: str):
     )
 
 
-def _is_tests_file(filepath: str) -> bool:
+def _is_tests_file(filepath: Path) -> bool:
     patterns = ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
-    return any(fnmatch.fnmatch(filepath, pattern) for pattern in patterns)
+    return any(fnmatch.fnmatch(filepath.as_posix(), pattern) for pattern in patterns)
 
 
-def get_product_or_test(filepath: str) -> CodeType:
+def get_product_or_test(filepath: Path) -> CodeType:
     if _is_tests_file(filepath):
         return CodeType.TEST
     return CodeType.PRODUCT
 
 
-def _open(filepath: str) -> str:
+def _open(filepath: Path) -> str:
     """
     指定されたファイルを開き、その内容を文字列として返します。
 
     Args:
-        filepath (str): 読み込むファイルのパス。
+        filepath (Path): 読み込むファイルのパス。
 
     Raises:
         ValueError: ファイルパスが設定されていない場合に発生。
@@ -78,10 +81,7 @@ def _open(filepath: str) -> str:
     Returns:
         str: ファイルの内容を含む文字列。
     """
-    if not filepath:
-        raise ValueError("filepath must be set")
-
-    if not os.path.exists(filepath):
+    if not filepath.exists():
         raise FileNotFoundError(f"{filepath} is not found")
 
     with open(filepath) as f:

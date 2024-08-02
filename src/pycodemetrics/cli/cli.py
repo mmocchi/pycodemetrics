@@ -1,9 +1,13 @@
+import sys
 from enum import IntEnum
 from pathlib import Path
 
 import click
 
 from pycodemetrics.cli.cli_analyze_python_metrics import (
+    DisplayFormat,
+    DisplayParameter,
+    ExportParameter,
     InputTargetParameter,
     run_analyze_python_metrics,
 )
@@ -27,26 +31,58 @@ def cli():
     default=False,
     help="Analyze python files in the git",
 )
-def analyze(input_path: str, with_git_repo: bool):
+@click.option(
+    "--format",
+    type=click.Choice(DisplayFormat.to_list(), case_sensitive=True),
+    default=DisplayFormat.TABLE.value,
+    help=f"Output format, default: {DisplayFormat.TABLE.value}",
+)
+@click.option(
+    "--export",
+    type=click.Path(file_okay=True, dir_okay=False),
+    default=None,
+    help="Export the result to the specified file path. If not specified, do not export.",
+)
+@click.option(
+    "--export-overwrite",
+    is_flag=True,
+    default=False,
+    help="Overwrite the export file if it already exists.",
+)
+def analyze(
+    input_path: str,
+    with_git_repo: bool,
+    format: str,
+    export: str,
+    export_overwrite: bool,
+):
     """
     Analyze python metrics in the specified path.
 
     INPUT_PATH: Path to the target python file or directory.
     """
 
-    input_param = InputTargetParameter(
-        path=Path(input_path), with_git_repo=with_git_repo
-    )
+    try:
+        input_param = InputTargetParameter(
+            path=Path(input_path), with_git_repo=with_git_repo
+        )
 
-    run_analyze_python_metrics(input_param)
+        display_param = DisplayParameter(format=DisplayFormat(format))
+
+        export_file_path = Path(export) if export else None
+        export_param = ExportParameter(
+            export_file_path=export_file_path, overwrite=export_overwrite
+        )
+
+        run_analyze_python_metrics(input_param, display_param, export_param)
+        sys.exit(RETURN_CODE.SUCCESS)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        raise e
 
 
 cli.add_command(analyze)
 
+
 if __name__ == "__main__":
-    try:
-        cli()
-        exit(RETURN_CODE.SUCCESS)
-    except Exception as e:
-        print(f"Error: {e}")
-        exit(RETURN_CODE.ERROR)
+    cli()
