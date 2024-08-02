@@ -10,36 +10,29 @@ PyCodeMetricsは、Pythonプロジェクトのコードメトリクスを収集�
 - コードの認知的複雑度の計算
 - 各種メトリクスの収集とレポート生成
 
-## for Users
+## インストール
 
-### Install
-
-### Usage
-
-
-## for Contributers
-### Setup
-
-このプロジェクトはPoetryを使用して管理されています。以下の手順でインストールしてください：
-
-1. リポジトリをクローンします。
-
-    ```sh
-    git clone <repository-url>
-    cd pycodemetrics
-    ```
-
-2. Poetryを使用して依存関係をインストールします。
-
-    ```sh
-    poetry install
-    ```
-
-### Usage
-
-#### CLI
-
-`main.py`を実行して、メトリクスを収集および解析します。
+PyCodeMetricsは以下のコマンドでインストールできます：
 
 ```sh
-poetry run pycodemetrics analyze --dir_path .
+pip install pycodemetrics
+```
+
+## 使用方法
+
+PyCodeMetricsを使用してプロジェクトを分析するには、以下のコマンドを実行します：
+--dir_pathには.gitディレクトリが存在するディレクトリを指定してください。
+
+```sh
+pycodemetrics analyze --dir_path /path/to/your/project
+```
+
+このコマンドは指定されたディレクトリ内のPythonファイルを分析し、メトリクスのレポートを生成します。
+
+## ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。詳細については[LICENSE](LICENSE)ファイルを参照してください。
+
+## 貢献
+
+プロジェクトへの貢献に興味がある場合は、[CONTRIBUTING.md](CONTRIBUTING.md)をご覧ください。
