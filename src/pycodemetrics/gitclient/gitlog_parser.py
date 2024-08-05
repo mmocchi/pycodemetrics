@@ -1,12 +1,16 @@
 import datetime as dt
+from pathlib import Path
 
 from pycodemetrics.gitclient.models import GitFileCommitLog
 
 
-def parse_gitlogs(git_file_path: str, gitlogs: list[str]) -> list[GitFileCommitLog]:
+def parse_gitlogs(git_file_path: Path, gitlogs: list[str]) -> list[GitFileCommitLog]:
     """
     Parse the git logs and return a list of logs.
     """
+    if len(gitlogs) == 0:
+        return []
+
     parsed_logs = []
 
     for log in gitlogs:

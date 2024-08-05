@@ -1,21 +1,11 @@
-import sys
-from enum import IntEnum
-from pathlib import Path
-
 import click
 
-from pycodemetrics.cli.cli_analyze_python_metrics import (
-    DisplayFormat,
-    DisplayParameter,
-    ExportParameter,
-    InputTargetParameter,
-    run_analyze_python_metrics,
+from pycodemetrics.cli.analyze_hotspot.cli import (
+    hotspot as analyze_hotspot_metrics,
 )
-
-
-class RETURN_CODE(IntEnum):
-    SUCCESS = 0
-    ERROR = 1
+from pycodemetrics.cli.analyze_python.cli import (
+    analyze as analyze_python_metrics,
+)
 
 
 @click.group()
@@ -23,65 +13,8 @@ def cli():
     pass
 
 
-@click.command()
-@click.argument("input_path", type=click.Path(exists=True))
-@click.option(
-    "--with-git-repo",
-    is_flag=True,
-    default=False,
-    help="Analyze python files in the git",
-)
-@click.option(
-    "--format",
-    type=click.Choice(DisplayFormat.to_list(), case_sensitive=True),
-    default=DisplayFormat.TABLE.value,
-    help=f"Output format, default: {DisplayFormat.TABLE.value}",
-)
-@click.option(
-    "--export",
-    type=click.Path(file_okay=True, dir_okay=False),
-    default=None,
-    help="Export the result to the specified file path. If not specified, do not export.",
-)
-@click.option(
-    "--export-overwrite",
-    is_flag=True,
-    default=False,
-    help="Overwrite the export file if it already exists.",
-)
-def analyze(
-    input_path: str,
-    with_git_repo: bool,
-    format: str,
-    export: str,
-    export_overwrite: bool,
-):
-    """
-    Analyze python metrics in the specified path.
-
-    INPUT_PATH: Path to the target python file or directory.
-    """
-
-    try:
-        input_param = InputTargetParameter(
-            path=Path(input_path), with_git_repo=with_git_repo
-        )
-
-        display_param = DisplayParameter(format=DisplayFormat(format))
-
-        export_file_path = Path(export) if export else None
-        export_param = ExportParameter(
-            export_file_path=export_file_path, overwrite=export_overwrite
-        )
-
-        run_analyze_python_metrics(input_param, display_param, export_param)
-        sys.exit(RETURN_CODE.SUCCESS)
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-        raise e
-
-
-cli.add_command(analyze)
+cli.add_command(analyze_python_metrics)
+cli.add_command(analyze_hotspot_metrics)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from pycodemetrics.cli.cli_analyze_python_metrics import (
+from pycodemetrics.cli.analyze_python.handler import (
     DisplayFormat,
     DisplayParameter,
     ExportParameter,

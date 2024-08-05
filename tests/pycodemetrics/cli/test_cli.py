@@ -1,7 +1,8 @@
 import pytest
 from click.testing import CliRunner
-from pycodemetrics.cli.cli import RETURN_CODE, cli
-from pycodemetrics.cli.cli_analyze_python_metrics import DisplayFormat
+from pycodemetrics.cli import RETURN_CODE
+from pycodemetrics.cli.analyze_python.handler import DisplayFormat
+from pycodemetrics.cli.cli import cli
 
 
 @pytest.fixture

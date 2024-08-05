@@ -1,10 +1,11 @@
 import datetime as dt
+from pathlib import Path
 
 from pydantic import BaseModel
 
 
 class GitFileCommitLog(BaseModel, frozen=True):
-    filepath: str
+    filepath: Path
     commit_hash: str
     author: str
     commit_date: dt.datetime
