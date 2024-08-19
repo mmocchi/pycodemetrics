@@ -2,6 +2,7 @@ import datetime as dt
 from pathlib import Path
 
 import pytest
+
 from pycodemetrics.gitclient.models import GitFileCommitLog
 from pycodemetrics.metrics.changelog.hotspot import HotspotMetrics, calculate_hotspot
 
