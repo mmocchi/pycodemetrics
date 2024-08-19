@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics
 from pycodemetrics.services.analyze_python_metrics import (
     CodeType,

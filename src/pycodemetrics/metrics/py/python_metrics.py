@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from pycodemetrics.metrics.py.cognitive_complexity import get_cognitive_complexity
 from pycodemetrics.metrics.py.import_analyzer import analyze_import_counts
 from pycodemetrics.metrics.py.raw.radon_wrapper import (
@@ -5,7 +7,6 @@ from pycodemetrics.metrics.py.raw.radon_wrapper import (
     get_maintainability_index,
     get_raw_metrics,
 )
-from pydantic import BaseModel
 
 
 class PythonCodeMetrics(BaseModel, frozen=True):

@@ -5,6 +5,9 @@ from pathlib import Path
 
 import pandas as pd
 import tabulate
+from pydantic import BaseModel
+from tqdm import tqdm
+
 from pycodemetrics.services.analyze_changelogs import (
     FileHotspotMetrics,
     analyze_changelogs_file,
@@ -12,8 +15,6 @@ from pycodemetrics.services.analyze_changelogs import (
 from pycodemetrics.util.file_util import (
     get_target_files_by_git_ls_files,
 )
-from pydantic import BaseModel
-from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 

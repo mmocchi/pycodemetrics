@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from pycodemetrics.cli.analyze_python.handler import (
     DisplayFormat,
     DisplayParameter,

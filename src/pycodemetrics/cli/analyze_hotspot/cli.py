@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 import click
+
 from pycodemetrics.cli import RETURN_CODE
 from pycodemetrics.cli.analyze_hotspot.handler import (
     DisplayFormat,
