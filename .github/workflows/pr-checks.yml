@@ -52,7 +52,7 @@ jobs:
         pytest-coverage-path: ./pytest-coverage.txt
         junitxml-path: ./pytest.xml
   actions-timeline:
-    needs: [release]
+    needs: [test-python]
     runs-on: ubuntu-latest
     steps:
     - uses: Kesin11/actions-timeline@v2
