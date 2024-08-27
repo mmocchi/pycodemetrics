@@ -47,7 +47,7 @@ class ExportFormat(str, Enum):
 class InputTargetParameter(BaseModel, frozen=True):
     path: Path
     with_git_repo: bool
-    config_file_path: Path = "./pyproject.toml"
+    config_file_path: Path = Path("./pyproject.toml")
 
 
 class DisplayParameter(BaseModel, frozen=True):

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import toml
 from pydantic import BaseModel
@@ -9,8 +10,8 @@ class UserGroupConfig(BaseModel):
     patterns: list[str]
 
 
-TESTCODE_PATTERN_DEFAULT = ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
-USER_GROUPS_DEFAULT = []
+TESTCODE_PATTERN_DEFAULT: list[str] = ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
+USER_GROUPS_DEFAULT: list[UserGroupConfig] = []
 
 
 class ConfigManager:
@@ -46,7 +47,7 @@ class ConfigManager:
         return pyproject_toml
 
     @classmethod
-    def get_testcode_type_patterns(cls, config_file_path) -> list[str]:
+    def get_testcode_type_patterns(cls, config_file_path: Path) -> list[str]:
         try:
             pyproject_toml = cls._load(config_file_path)
             return cls._load_testcode_pattern(pyproject_toml)
@@ -54,7 +55,7 @@ class ConfigManager:
             return TESTCODE_PATTERN_DEFAULT
 
     @classmethod
-    def get_user_groups(cls, config_file_path) -> list[UserGroupConfig]:
+    def get_user_groups(cls, config_file_path: Path) -> list[UserGroupConfig]:
         try:
             pyproject_toml = cls._load(config_file_path)
             return cls._load_user_groups(pyproject_toml)
