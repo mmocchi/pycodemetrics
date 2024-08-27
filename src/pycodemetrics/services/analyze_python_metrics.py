@@ -5,9 +5,15 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
 
 logger = logging.getLogger(__name__)
+
+
+class AnalyzePythonSettings(BaseModel, frozen=True):
+    testcode_type_patterns: list[str] = []
+    user_groups: list[UserGroupConfig] = []
 
 
 class CodeType(Enum):
@@ -27,22 +33,27 @@ class PythonFileMetrics(BaseModel, frozen=True):
 
     filepath: Path
     product_or_test: CodeType
+    group_name: str
     metrics: PythonCodeMetrics
 
     def to_flat(self):
         return {
             "filepath": self.filepath,
             "product_or_test": self.product_or_test.value,
+            "group_name": self.group_name,
             **self.metrics.to_dict(),
         }
 
 
-def analyze_python_file(filepath: Path):
+def analyze_python_file(
+    filepath: Path, settings: AnalyzePythonSettings
+) -> PythonFileMetrics:
     """
     指定されたPythonファイルを解析し、そのメトリクスを計算します。
 
     Args:
         filepath (Path): 解析するPythonファイルのパス。
+        settings (AnalyzePythonSettings): 解析の設定
 
     Returns:
         PythonFileMetrics: ファイルパス、ファイルタイプ、計算されたメトリクスを含むPythonFileMetricsオブジェクト。
@@ -51,20 +62,30 @@ def analyze_python_file(filepath: Path):
     python_code_metrics = compute_metrics(code)
     return PythonFileMetrics(
         filepath=filepath,
-        product_or_test=get_product_or_test(filepath),
+        product_or_test=get_product_or_test(filepath, settings.testcode_type_patterns),
+        group_name=get_group_name(filepath, settings.user_groups),
         metrics=python_code_metrics,
     )
 
 
-def _is_tests_file(filepath: Path) -> bool:
-    patterns = ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
+def _is_match(
+    filepath: Path,
+    patterns: list[str],
+) -> bool:
     return any(fnmatch.fnmatch(filepath.as_posix(), pattern) for pattern in patterns)
 
 
-def get_product_or_test(filepath: Path) -> CodeType:
-    if _is_tests_file(filepath):
+def get_product_or_test(filepath: Path, patterns: list[str]) -> CodeType:
+    if _is_match(filepath, patterns):
         return CodeType.TEST
     return CodeType.PRODUCT
+
+
+def get_group_name(filepath: Path, user_groups: list[UserGroupConfig]) -> str:
+    for group in user_groups:
+        if _is_match(filepath, group.patterns):
+            return group.name
+    return "undefined"
 
 
 def _open(filepath: Path) -> str:

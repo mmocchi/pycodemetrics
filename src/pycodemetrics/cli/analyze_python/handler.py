@@ -8,7 +8,9 @@ import tabulate
 from pydantic import BaseModel
 from tqdm import tqdm
 
+from pycodemetrics.config.config_manager import ConfigManager
 from pycodemetrics.services.analyze_python_metrics import (
+    AnalyzePythonSettings,
     PythonFileMetrics,
     analyze_python_file,
 )
@@ -45,6 +47,7 @@ class ExportFormat(str, Enum):
 class InputTargetParameter(BaseModel, frozen=True):
     path: Path
     with_git_repo: bool
+    config_file_path: Path = Path("./pyproject.toml")
 
 
 class DisplayParameter(BaseModel, frozen=True):
@@ -100,7 +103,9 @@ def _export(
         raise ValueError(f"Invalid export format: {export_file_path.suffix}")
 
 
-def _analyze_python_metrics(target_file_paths: list[Path]) -> list[PythonFileMetrics]:
+def _analyze_python_metrics(
+    target_file_paths: list[Path], settings: AnalyzePythonSettings
+) -> list[PythonFileMetrics]:
     results = []
     for filepath in tqdm(target_file_paths):
         if not filepath.suffix == ".py":
@@ -108,7 +113,7 @@ def _analyze_python_metrics(target_file_paths: list[Path]) -> list[PythonFileMet
             continue
 
         try:
-            result = analyze_python_file(filepath)
+            result = analyze_python_file(filepath, settings)
             results.append(result)
         except Exception as e:
             logger.warning(f"Skipping {filepath}. cause of error: {e}")
@@ -143,7 +148,14 @@ def run_analyze_python_metrics(
     else:
         target_file_full_paths = [base_path.joinpath(f) for f in target_file_paths]
 
-    results = _analyze_python_metrics(target_file_full_paths)
+    config_file_path = input_param.config_file_path
+    analyze_settings = AnalyzePythonSettings(
+        testcode_type_patterns=ConfigManager.get_testcode_type_patterns(
+            config_file_path
+        ),
+        user_groups=ConfigManager.get_user_groups(config_file_path),
+    )
+    results = _analyze_python_metrics(target_file_full_paths, analyze_settings)
 
     results_df = _transform_for_display(results)
 
