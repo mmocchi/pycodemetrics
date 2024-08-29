@@ -3,7 +3,6 @@ import logging
 import os
 from concurrent.futures import as_completed
 from concurrent.futures.process import ProcessPoolExecutor
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -19,10 +18,28 @@ from pycodemetrics.services.analyze_changelogs import (
     analyze_changelogs_file,
 )
 from pycodemetrics.util.file_util import (
+    CodeType,
     get_target_files_by_git_ls_files,
 )
 
 logger = logging.getLogger(__name__)
+
+
+Columns = Enum(  # type: ignore[misc]
+    "Columns",
+    ((value, value) for value in FileHotspotMetrics.get_keys()),
+    type=str,
+)
+
+
+class FilterCodeType(str, Enum):
+    PRODUCT = CodeType.PRODUCT.value
+    TEST = CodeType.TEST.value
+    BOTH = "both"
+
+    @classmethod
+    def to_list(cls):
+        return [e.value for e in cls]
 
 
 class DisplayFormat(str, Enum):
@@ -64,6 +81,29 @@ class RuntimeParameter(BaseModel, frozen=True):
 
 class DisplayParameter(BaseModel, frozen=True):
     format: DisplayFormat = DisplayFormat.TABLE
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
+    limit: int | None = 10
+    sort_column: str = "hotspot"
+    sort_desc: bool = True
+    columns: list[Columns] | None = FileHotspotMetrics.get_keys()
+
+    @validator("columns", pre=True)
+    def set_columns(cls, value: list[str] | None):
+        if value is None:
+            return FileHotspotMetrics.get_keys()
+        return value
+
+    @validator("sort_column", pre=True)
+    def set_sort_column(cls, value: str):
+        if value not in FileHotspotMetrics.get_keys():
+            raise ValueError(f"Invalid sort column: {value}")
+        return value
+
+    @validator("limit", pre=True)
+    def set_limit(cls, value: int | None):
+        if value is None or value <= 0:
+            return None
+        return value
 
 
 class ExportParameter(BaseModel, frozen=True):
@@ -90,18 +130,6 @@ def _diplay(results_df: pd.DataFrame, display_format: DisplayFormat) -> None:
         raise ValueError(f"Invalid display format: {display_format}")
 
 
-@dataclass
-class InputTarget:
-    target_file_full_path: Path
-    git_repo_path: Path
-
-
-def _analyze_hotspot_metrics_file(
-    target_file_path, git_repo_path, settings
-) -> FileHotspotMetrics:
-    return analyze_changelogs_file(target_file_path, git_repo_path, settings)
-
-
 def _analyze_hotspot_metrics(
     target_file_paths: list[Path],
     git_repo_path: Path,
@@ -111,9 +139,7 @@ def _analyze_hotspot_metrics(
 
     for target in tqdm(target_file_paths):
         try:
-            print(target)
-            result = _analyze_hotspot_metrics_file(target, git_repo_path, settings)
-            print(result)
+            result = analyze_changelogs_file(target, git_repo_path, settings)
             results.append(result)
         except Exception as e:
             logger.error(f"Failed to analyze {target}: {e}")
@@ -136,7 +162,7 @@ def _analyze_hotspot_metrics_for_multiprocessing(
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(
-                    _analyze_hotspot_metrics_file, target, git_repo_path, settings
+                    analyze_changelogs_file, target, git_repo_path, settings
                 )
                 for target in target_file_paths
             }
@@ -182,6 +208,32 @@ def _export(
         raise ValueError(f"Invalid export format: {export_file_path.suffix}")
 
 
+def _filter(results_df: pd.DataFrame, filter_code_type: FilterCodeType) -> pd.DataFrame:
+    if filter_code_type == FilterCodeType.BOTH:
+        return results_df
+
+    return results_df[results_df["code_type"] == filter_code_type.value]
+
+
+def _sort(results_df: pd.DataFrame, sort_column: str, sort_desc: bool) -> pd.DataFrame:
+    sorted_df = results_df.sort_values(sort_column, ascending=not sort_desc)
+    return sorted_df.reset_index(drop=True)
+
+
+def _select_columns(results_df: pd.DataFrame, columns: list[Columns]) -> pd.DataFrame:
+    columns = [col.value for col in columns]
+    return results_df[columns]
+
+
+def _head(results_df: pd.DataFrame, limit: int | None) -> pd.DataFrame:
+    if limit is None:
+        return results_df
+
+    if limit < 0:
+        raise ValueError(f"Invalid limit: {limit}")
+    return results_df.head(limit)
+
+
 def run_analyze_hotspot_metrics(
     input_param: InputTargetParameter,
     runtime_param: RuntimeParameter,
@@ -220,9 +272,14 @@ def run_analyze_hotspot_metrics(
 
     # 結果の表示
     results_df = _transform_for_display(results)
-    results_df = results_df.sort_values("hotspot", ascending=False)
+
+    display_df = results_df.copy()
+    display_df = _filter(display_df, display_param.filter_code_type)
+    display_df = _sort(display_df, display_param.sort_column, display_param.sort_desc)
+    display_df = _select_columns(display_df, display_param.columns)
+    display_df = _head(display_df, display_param.limit)
 
     if export_param.with_export():
         _export(results_df, export_param.export_file_path, export_param.overwrite)
 
-    _diplay(results_df, display_param.format)
+    _diplay(display_df, display_param.format)

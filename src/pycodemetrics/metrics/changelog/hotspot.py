@@ -29,6 +29,25 @@ class HotspotMetrics(BaseModel, frozen=True):
     def to_dict(self) -> dict:
         return self.model_dump()
 
+    @classmethod
+    def get_keys(cls):
+        return cls.model_fields.keys()
+
+
+def _calculate_t(
+    first_commit_datetime: dt.datetime,
+    last_commit_datetime: dt.datetime,
+    commit_date: dt.datetime,
+) -> float:
+    if last_commit_datetime == commit_date:
+        return 1
+
+    t = 1 - (
+        (last_commit_datetime - commit_date).total_seconds()
+        / (last_commit_datetime - first_commit_datetime).total_seconds()
+    )
+    return t
+
 
 def calculate_hotspot(
     gitlogs: list[GitFileCommitLog], base_datetime: dt.datetime
@@ -55,16 +74,9 @@ def calculate_hotspot(
     if base_datetime_ == last_commit_datetime:
         base_datetime_ += dt.timedelta(seconds=1)
 
-    print(base_datetime_, last_commit_datetime)
-    print((base_datetime_ - last_commit_datetime).total_seconds())
-
     hotspots = 0
     for log in gitlogs:
-        t = 1 - (
-            (last_commit_datetime - log.commit_date).total_seconds()
-            / (last_commit_datetime - first_commit_datetime).total_seconds()
-        )
-
+        t = _calculate_t(first_commit_datetime, last_commit_datetime, log.commit_date)
         exp_input = (-12 * t) + 12
         hotspots += 1 / (1 + math.exp(exp_input))
 

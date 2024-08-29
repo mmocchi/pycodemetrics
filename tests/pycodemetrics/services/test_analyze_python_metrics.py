@@ -10,7 +10,7 @@ from pycodemetrics.services.analyze_python_metrics import (
     _is_match,
     _open,
     analyze_python_file,
-    get_product_or_test,
+    get_code_type,
 )
 
 
@@ -57,7 +57,7 @@ def test_analyze_python_file(mock_open, mock_compute_metrics):
     # Assert: 期待されるPythonFileMetricsオブジェクトと結果を比較
     expected_metrics = PythonFileMetrics(
         filepath=filepath,
-        product_or_test="product",
+        code_type="product",
         group_name="undefined",
         metrics=mock_compute_metrics.return_value,
     )
@@ -83,22 +83,18 @@ def test_is_tests_file():
     )
 
 
-def test_get_product_or_test():
+def test_get_code_type():
     # Arrange: テスト用のファイルパスを準備
     test_file_path = Path("project/tests/test_example.py")
     non_test_file_path = Path("project/src/example.py")
 
     # Act & Assert: _is_tests_file関数を実行し、結果を確認
     assert (
-        get_product_or_test(
-            test_file_path, ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
-        )
+        get_code_type(test_file_path, ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"])
         == CodeType.TEST
     )
     assert (
-        get_product_or_test(
-            non_test_file_path, ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
-        )
+        get_code_type(non_test_file_path, ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"])
         == CodeType.PRODUCT
     )
 
@@ -121,7 +117,7 @@ def test_to_flat(mock_open, mock_compute_metrics):
     # Assert: 期待されるPythonFileMetricsオブジェクトと結果を比較
     expected_metrics = {
         "filepath": filepath,
-        "product_or_test": "product",
+        "code_type": "product",
         "group_name": "undefined",
         "lines_of_code": 10,
         "logical_lines_of_code": 10,

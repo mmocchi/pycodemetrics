@@ -39,7 +39,7 @@ def _is_match(
     return any(fnmatch.fnmatch(filepath.as_posix(), pattern) for pattern in patterns)
 
 
-def get_product_or_test(filepath: Path, patterns: list[str]) -> CodeType:
+def get_code_type(filepath: Path, patterns: list[str]) -> CodeType:
     if _is_match(filepath, patterns):
         return CodeType.TEST
     return CodeType.PRODUCT

@@ -7,7 +7,7 @@ from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.gitclient.gitcli import get_file_gitlogs
 from pycodemetrics.gitclient.gitlog_parser import parse_gitlogs
 from pycodemetrics.metrics.changelog.hotspot import HotspotMetrics, calculate_hotspot
-from pycodemetrics.util.file_util import CodeType, get_group_name, get_product_or_test
+from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 
 
 class AnalizeChangeLogSettings(BaseModel, frozen=True):
@@ -18,17 +18,23 @@ class AnalizeChangeLogSettings(BaseModel, frozen=True):
 
 class FileHotspotMetrics(BaseModel, frozen=True):
     filepath: Path
-    product_or_test: CodeType
+    code_type: CodeType
     group_name: str
     hotspot: HotspotMetrics
 
-    def to_flat(self):
+    def to_flat(self) -> dict:
         return {
             "filepath": self.filepath,
-            "product_or_test": self.product_or_test.value,
+            "code_type": self.code_type.value,
             "group_name": self.group_name,
             **self.hotspot.to_dict(),
         }
+
+    @classmethod
+    def get_keys(cls):
+        keys = [k for k in cls.model_fields.keys() if k != "hotspot"]
+        keys.extend(HotspotMetrics.get_keys())
+        return keys
 
 
 def analyze_changelogs_file(
@@ -54,7 +60,7 @@ def analyze_changelogs_file(
 
     return FileHotspotMetrics(
         filepath=filepath,
-        product_or_test=get_product_or_test(filepath, settings.testcode_type_patterns),
+        code_type=get_code_type(filepath, settings.testcode_type_patterns),
         group_name=get_group_name(filepath, settings.user_groups),
         hotspot=hotspot_metrics,
     )

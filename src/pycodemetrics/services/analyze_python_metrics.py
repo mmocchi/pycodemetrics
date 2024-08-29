@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
-from pycodemetrics.util.file_util import CodeType, get_group_name, get_product_or_test
+from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +21,20 @@ class PythonFileMetrics(BaseModel, frozen=True):
 
     属性:
         filepath (str): ファイルのパス。
-        product_or_test (CodeType): プロダクトコードかテストコードかを示す。
+        code_type (CodeType): プロダクトコードかテストコードかを示す。
         group_name (str): ユーザーが定義したグループ定義のどれに一致するか。
         metrics (PythonCodeMetrics): Pythonコードのメトリクス。
     """
 
     filepath: Path
-    product_or_test: CodeType
+    code_type: CodeType
     group_name: str
     metrics: PythonCodeMetrics
 
     def to_flat(self):
         return {
             "filepath": self.filepath,
-            "product_or_test": self.product_or_test.value,
+            "code_type": self.code_type.value,
             "group_name": self.group_name,
             **self.metrics.to_dict(),
         }
@@ -57,7 +57,7 @@ def analyze_python_file(
     python_code_metrics = compute_metrics(code)
     return PythonFileMetrics(
         filepath=filepath,
-        product_or_test=get_product_or_test(filepath, settings.testcode_type_patterns),
+        code_type=get_code_type(filepath, settings.testcode_type_patterns),
         group_name=get_group_name(filepath, settings.user_groups),
         metrics=python_code_metrics,
     )

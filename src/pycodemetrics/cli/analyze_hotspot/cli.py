@@ -43,17 +43,32 @@ logger = logging.getLogger(__name__)
     default=False,
     help="Overwrite the export file if it already exists.",
 )
+@click.option(
+    "--columns",
+    type=str,
+    default=None,
+    help="Columns to display. Default: None. When None, display all columns.",
+)
+@click.option(
+    "--limit",
+    type=click.IntRange(min=0),
+    default=10,
+    help="Limit the number of files to display. Default: 10. And 0 means no limit.",
+)
 def hotspot(
     input_repo_path: str,
     workers: int | None,
     format: str,
     export: str,
     export_overwrite: bool,
+    columns: str | None,
+    limit: int,
 ):
     """
     Analyze hotspot metrics in the specified path.
 
     INPUT_REPO_PATH: Path to the target directory of git repository.
+
     """
 
     logger.info(
@@ -63,7 +78,10 @@ def hotspot(
     try:
         input_param = InputTargetParameter(path=Path(input_repo_path))
         runtime_param = RuntimeParameter(workers=workers)
-        display_param = DisplayParameter(format=DisplayFormat(format))
+        column_list = [c.strip() for c in columns.split(",")] if columns else None
+        display_param = DisplayParameter(
+            format=DisplayFormat(format), columns=column_list, limit=limit
+        )
 
         export_file_path = Path(export) if export else None
         export_param = ExportParameter(
