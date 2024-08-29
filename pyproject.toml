@@ -54,6 +54,7 @@ exclude_lines = [ "pragma: no cover", "def __repr__", "if self.debug:", "if __na
 
 [tool.taskipy.tasks]
 lint = "ruff check ."
+format = "ruff format ."
 mypy = "mypy src"
 summary = "python generate_project_summary.py"
 test = "pytest tests"
@@ -77,7 +78,7 @@ mypy = "^1.11.0"
 pytest = "^8.3.2"
 pytest-cov = "^5.0.0"
 pytest-mock = "^3.14.0"
-ruff = "^0.6.0"
+ruff = "0.6.3"
 taskipy = "^1.13.0"
 pre-commit = "^3.8.0"
 toml = "^0.10.2"
