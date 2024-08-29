@@ -17,6 +17,7 @@ def simple_function():
     assert isinstance(result, float)
     assert result > 0  # Maintainability Index should be a positive float
 
+
 def test_get_complexity():
     # Arrange
     code = """

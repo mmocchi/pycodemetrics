@@ -15,6 +15,7 @@ class FunctionCognitiveComplexity(BaseModel, frozen=True):
         function_name (str): 関数名。
         complexity (int): 関数の認知的複雑度。
     """
+
     function_name: str
     complexity: int
 
@@ -45,5 +46,9 @@ def get_function_cognitive_complexity(
     results = []
     for funcdef in funcdefs:
         complexity = get_cognitive_complexity(funcdef)
-        results.append(FunctionCognitiveComplexity(function_name=funcdef.name, complexity=complexity))
+        results.append(
+            FunctionCognitiveComplexity(
+                function_name=funcdef.name, complexity=complexity
+            )
+        )
     return results

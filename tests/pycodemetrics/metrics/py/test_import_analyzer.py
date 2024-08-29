@@ -26,6 +26,7 @@ import ast
     # Assert: 期待されるインポート数と結果を比較
     assert result == 5
 
+
 def test_import_analyzer():
     """
     ImportAnalyzerクラスのテスト。

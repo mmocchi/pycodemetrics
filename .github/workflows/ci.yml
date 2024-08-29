@@ -1,5 +1,5 @@
 # PR作成時のチェックを行うワークフロー
-name: PR Checks
+name: CI
 
 on:
   pull_request:

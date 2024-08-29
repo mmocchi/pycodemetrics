@@ -1,45 +1,40 @@
-import fnmatch
 import logging
-from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
+from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 
 logger = logging.getLogger(__name__)
 
 
-class AnalyzePythonSettings(BaseModel, frozen=True):
+class AnalyzePythonSettings(BaseModel, frozen=True, extra="forbid"):
     testcode_type_patterns: list[str] = []
     user_groups: list[UserGroupConfig] = []
 
 
-class CodeType(Enum):
-    PRODUCT = "product"
-    TEST = "test"
-
-
-class PythonFileMetrics(BaseModel, frozen=True):
+class PythonFileMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     Pythonファイルのメトリクスを表すクラス。
 
     属性:
         filepath (str): ファイルのパス。
-        product_or_test (CodeType): プロダクトコードかテストコードかを示す。
+        code_type (CodeType): プロダクトコードかテストコードかを示す。
+        group_name (str): ユーザーが定義したグループ定義のどれに一致するか。
         metrics (PythonCodeMetrics): Pythonコードのメトリクス。
     """
 
     filepath: Path
-    product_or_test: CodeType
+    code_type: CodeType
     group_name: str
     metrics: PythonCodeMetrics
 
     def to_flat(self):
         return {
             "filepath": self.filepath,
-            "product_or_test": self.product_or_test.value,
+            "code_type": self.code_type.value,
             "group_name": self.group_name,
             **self.metrics.to_dict(),
         }
@@ -62,30 +57,10 @@ def analyze_python_file(
     python_code_metrics = compute_metrics(code)
     return PythonFileMetrics(
         filepath=filepath,
-        product_or_test=get_product_or_test(filepath, settings.testcode_type_patterns),
+        code_type=get_code_type(filepath, settings.testcode_type_patterns),
         group_name=get_group_name(filepath, settings.user_groups),
         metrics=python_code_metrics,
     )
-
-
-def _is_match(
-    filepath: Path,
-    patterns: list[str],
-) -> bool:
-    return any(fnmatch.fnmatch(filepath.as_posix(), pattern) for pattern in patterns)
-
-
-def get_product_or_test(filepath: Path, patterns: list[str]) -> CodeType:
-    if _is_match(filepath, patterns):
-        return CodeType.TEST
-    return CodeType.PRODUCT
-
-
-def get_group_name(filepath: Path, user_groups: list[UserGroupConfig]) -> str:
-    for group in user_groups:
-        if _is_match(filepath, group.patterns):
-            return group.name
-    return "undefined"
 
 
 def _open(filepath: Path) -> str:

@@ -141,7 +141,7 @@ def example_function():
     # エクスポートされたCSVの内容を確認
     df = pd.read_csv(export_file)
     assert "filepath" in df.columns
-    assert "product_or_test" in df.columns
+    assert "code_type" in df.columns
     assert len(df) == 1  # 1つのファイルのみ解析されたことを確認
     assert Path(df.iloc[0]["filepath"]).name == "test_file.py"
-    assert df.iloc[0]["product_or_test"] == "product"
+    assert df.iloc[0]["code_type"] == "product"

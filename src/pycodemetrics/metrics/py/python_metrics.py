@@ -9,7 +9,7 @@ from pycodemetrics.metrics.py.raw.radon_wrapper import (
 )
 
 
-class PythonCodeMetrics(BaseModel, frozen=True):
+class PythonCodeMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     Pythonコードのメトリクスを表すクラス。
 
@@ -26,6 +26,7 @@ class PythonCodeMetrics(BaseModel, frozen=True):
         maintainability_index (float): 保守性指数。
         cognitive_complexity (int): 認知的複雑度。
     """
+
     lines_of_code: int
     logical_lines_of_code: int
     source_lines_of_code: int

@@ -5,7 +5,7 @@ import toml
 from pydantic import BaseModel
 
 
-class UserGroupConfig(BaseModel):
+class UserGroupConfig(BaseModel, extra="forbid"):
     name: str
     patterns: list[str]
 

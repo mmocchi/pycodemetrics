@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from pycodemetrics.gitclient.models import GitFileCommitLog
-from pycodemetrics.metrics.changelog.hotspot import HotspotMetrics, calculate_hotspot
+from pycodemetrics.metrics.hotspot import HotspotMetrics, calculate_hotspot
 
 
 def build_git_commit_log(commit_date: dt.datetime) -> GitFileCommitLog:
@@ -27,7 +27,7 @@ def test_calculate_hotspot():
     ]
 
     # Act
-    result = calculate_hotspot(gitlogs)
+    result = calculate_hotspot(gitlogs, base_datetime=dt.datetime(2023, 10, 5))
 
     # Assert
     expected_first_commit_datetime = dt.datetime(2023, 1, 1)
@@ -38,7 +38,7 @@ def test_calculate_hotspot():
     assert result.last_commit_datetime == expected_last_commit_datetime
     assert result.change_count == expected_change_count
     assert result.lifetime_days == 276
-    assert result.hotspot == 0.014492753623188406
+    assert result.hotspot == 0.4891906292081721
 
 
 def test_validate_first_commit_datetimeがlast_commit_datetimeよりも小さい():
@@ -49,6 +49,7 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeよりも小さい
         change_count=3,
         first_commit_datetime=dt.datetime(2023, 1, 1),
         last_commit_datetime=dt.datetime(2023, 1, 3),
+        hotspot=0.0,
     )
 
     # Assert
@@ -64,6 +65,7 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeと同じ日時():
         change_count=3,
         first_commit_datetime=dt.datetime(2023, 1, 1),
         last_commit_datetime=dt.datetime(2023, 1, 1),
+        hotspot=0.0,
     )
 
     # Assert
@@ -80,4 +82,5 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeよりも大きい
             change_count=3,
             first_commit_datetime=dt.datetime(2023, 1, 3),
             last_commit_datetime=dt.datetime(2023, 1, 1),
+            hotspot=0.0,
         )

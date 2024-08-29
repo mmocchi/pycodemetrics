@@ -18,6 +18,7 @@ def example_function():
     expected_complexity = 2
     assert result == expected_complexity
 
+
 def test_get_cognitive_complexity_multi_functions():
     # Arrange
     code = """
@@ -39,6 +40,7 @@ def example_seconds_function():
     # Assert
     expected_complexity = 3
     assert result == expected_complexity
+
 
 def test_get_cognitive_complexity_class_and_method():
     # Arrange
