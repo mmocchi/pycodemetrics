@@ -38,6 +38,9 @@ jobs:
     # Lintの実行
     - name: Run lint
       run: poetry run ruff check .
+    # フォーマットのチェック
+    - name: Run check format
+      run: poetry run ruff format --check .
     # Mypyの実行
     - name: Run mypy
       run: poetry run mypy src
