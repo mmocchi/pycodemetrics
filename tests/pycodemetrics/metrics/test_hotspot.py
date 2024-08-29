@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from pycodemetrics.gitclient.models import GitFileCommitLog
-from pycodemetrics.metrics.changelog.hotspot import HotspotMetrics, calculate_hotspot
+from pycodemetrics.metrics.hotspot import HotspotMetrics, calculate_hotspot
 
 
 def build_git_commit_log(commit_date: dt.datetime) -> GitFileCommitLog:

@@ -13,6 +13,7 @@ from pycodemetrics.cli.analyze_hotspot.handler import (
     RuntimeParameter,
     run_analyze_hotspot_metrics,
 )
+from pycodemetrics.services.analyze_hotspot import FilterCodeType
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,12 @@ logger = logging.getLogger(__name__)
     default=10,
     help="Limit the number of files to display. Default: 10. And 0 means no limit.",
 )
+@click.option(
+    "--code-type",
+    type=click.Choice(FilterCodeType.to_list(), case_sensitive=True),
+    default=FilterCodeType.PRODUCT.value,
+    help=f"Filter code type, default: {FilterCodeType.PRODUCT.value}",
+)
 def hotspot(
     input_repo_path: str,
     workers: int | None,
@@ -63,6 +70,7 @@ def hotspot(
     export_overwrite: bool,
     columns: str | None,
     limit: int,
+    code_type: str,
 ):
     """
     Analyze hotspot metrics in the specified path.
@@ -77,11 +85,21 @@ def hotspot(
 
     try:
         input_param = InputTargetParameter(path=Path(input_repo_path))
-        runtime_param = RuntimeParameter(workers=workers)
-        column_list = [c.strip() for c in columns.split(",")] if columns else None
-        display_param = DisplayParameter(
-            format=DisplayFormat(format), columns=column_list, limit=limit
+        runtime_param = RuntimeParameter(
+            workers=workers,
+            filter_code_type=FilterCodeType(code_type),
         )
+        column_list = [c.strip() for c in columns.split(",")] if columns else None
+
+        display_param = DisplayParameter(
+            format=DisplayFormat(format),
+            columns=column_list,
+            limit=limit,
+            filter_code_type=FilterCodeType(code_type),
+        )
+
+        print(runtime_param)
+        print(display_param)
 
         export_file_path = Path(export) if export else None
         export_param = ExportParameter(

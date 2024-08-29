@@ -12,7 +12,8 @@ class BlockType(Enum):
     CLASS = "Class"
     UNKNOWN = "Unknown"
 
-class RawMetrics(BaseModel, frozen=True):
+
+class RawMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     生のコードメトリクスを表すデータクラス。
 
@@ -27,6 +28,7 @@ class RawMetrics(BaseModel, frozen=True):
         multi (int): 複数行コメントの数。
         blank (int): 空行の数。
     """
+
     lines_of_code: int
     logical_lines_of_code: int
     source_lines_of_code: int
@@ -39,7 +41,7 @@ class RawMetrics(BaseModel, frozen=True):
         return self.model_dump()
 
 
-class BlockMetrics(BaseModel, frozen=True):
+class BlockMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     コードブロックのメトリクスを表すデータクラス。
 
@@ -51,6 +53,7 @@ class BlockMetrics(BaseModel, frozen=True):
         fullname (str): コードブロックの完全な名前。
         block_type (BlockType): コードブロックの種類（関数、メソッド、クラスなど）。
     """
+
     complexity: int
     name: str
     fullname: str

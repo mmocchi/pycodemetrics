@@ -12,13 +12,14 @@ from pydantic import BaseModel, validator
 from tqdm import tqdm
 
 from pycodemetrics.config.config_manager import ConfigManager
-from pycodemetrics.services.analyze_changelogs import (
-    AnalizeChangeLogSettings,
+from pycodemetrics.services.analyze_hotspot import (
+    AnalizeHotspotSettings,
     FileHotspotMetrics,
-    analyze_changelogs_file,
+    FilterCodeType,
+    analyze_hotspot_file,
 )
 from pycodemetrics.util.file_util import (
-    CodeType,
+    get_code_type,
     get_target_files_by_git_ls_files,
 )
 
@@ -30,16 +31,6 @@ Columns = Enum(  # type: ignore[misc]
     ((value, value) for value in FileHotspotMetrics.get_keys()),
     type=str,
 )
-
-
-class FilterCodeType(str, Enum):
-    PRODUCT = CodeType.PRODUCT.value
-    TEST = CodeType.TEST.value
-    BOTH = "both"
-
-    @classmethod
-    def to_list(cls):
-        return [e.value for e in cls]
 
 
 class DisplayFormat(str, Enum):
@@ -64,13 +55,14 @@ class ExportFormat(str, Enum):
         return f".{self.value}"
 
 
-class InputTargetParameter(BaseModel, frozen=True):
+class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
     path: Path
     config_file_path: Path = Path("./pyproject.toml")
 
 
-class RuntimeParameter(BaseModel, frozen=True):
+class RuntimeParameter(BaseModel, frozen=True, extra="forbid"):
     workers: int
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
 
     @validator("workers", pre=True)
     def set_workers(cls, value: int):
@@ -79,7 +71,7 @@ class RuntimeParameter(BaseModel, frozen=True):
         return value
 
 
-class DisplayParameter(BaseModel, frozen=True):
+class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     format: DisplayFormat = DisplayFormat.TABLE
     filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
     limit: int | None = 10
@@ -106,7 +98,7 @@ class DisplayParameter(BaseModel, frozen=True):
         return value
 
 
-class ExportParameter(BaseModel, frozen=True):
+class ExportParameter(BaseModel, frozen=True, extra="forbid"):
     export_file_path: Path | None = None
     overwrite: bool = False
 
@@ -130,16 +122,30 @@ def _diplay(results_df: pd.DataFrame, display_format: DisplayFormat) -> None:
         raise ValueError(f"Invalid display format: {display_format}")
 
 
+def _filter_target(target_file_paths: list[Path], settings: AnalizeHotspotSettings):
+    if settings.filter_code_type == FilterCodeType.BOTH:
+        return target_file_paths
+
+    return [
+        target
+        for target in target_file_paths
+        if get_code_type(target, settings.testcode_type_patterns).value
+        == settings.filter_code_type.value
+    ]
+
+
 def _analyze_hotspot_metrics(
     target_file_paths: list[Path],
     git_repo_path: Path,
-    settings: AnalizeChangeLogSettings,
+    settings: AnalizeHotspotSettings,
 ) -> list[FileHotspotMetrics]:
     results = []
 
-    for target in tqdm(target_file_paths):
+    target_file_paths_ = _filter_target(target_file_paths, settings)
+
+    for target in tqdm(target_file_paths_):
         try:
-            result = analyze_changelogs_file(target, git_repo_path, settings)
+            result = analyze_hotspot_file(target, git_repo_path, settings)
             results.append(result)
         except Exception as e:
             logger.error(f"Failed to analyze {target}: {e}")
@@ -150,21 +156,19 @@ def _analyze_hotspot_metrics(
 def _analyze_hotspot_metrics_for_multiprocessing(
     target_file_paths: list[Path],
     git_repo_path: Path,
-    settings: AnalizeChangeLogSettings,
+    settings: AnalizeHotspotSettings,
     workers: int = 16,
 ) -> list[FileHotspotMetrics]:
     results = []
 
-    # TODO: filter supported files
+    target_file_paths_ = _filter_target(target_file_paths, settings)
 
     results = []
-    with tqdm(total=len(target_file_paths)) as pbar:
+    with tqdm(total=len(target_file_paths_)) as pbar:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {
-                executor.submit(
-                    analyze_changelogs_file, target, git_repo_path, settings
-                )
-                for target in target_file_paths
+                executor.submit(analyze_hotspot_file, target, git_repo_path, settings)
+                for target in target_file_paths_
             }
 
             for future in as_completed(futures):
@@ -249,12 +253,13 @@ def run_analyze_hotspot_metrics(
 
     # 解析の実行
     config_file_path = input_param.config_file_path
-    settings = AnalizeChangeLogSettings(
+    settings = AnalizeHotspotSettings(
         base_datetime=dt.datetime.now(dt.timezone.utc).astimezone(),
         testcode_type_patterns=ConfigManager.get_testcode_type_patterns(
             config_file_path
         ),
         user_groups=ConfigManager.get_user_groups(config_file_path),
+        filter_code_type=runtime_param.filter_code_type,
     )
 
     if runtime_param.workers <= 1:

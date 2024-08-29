@@ -7,7 +7,7 @@ from pydantic import BaseModel, computed_field, model_validator
 from pycodemetrics.gitclient.models import GitFileCommitLog
 
 
-class HotspotMetrics(BaseModel, frozen=True):
+class HotspotMetrics(BaseModel, frozen=True, extra="forbid"):
     change_count: int
     first_commit_datetime: dt.datetime
     last_commit_datetime: dt.datetime
@@ -38,13 +38,11 @@ def _calculate_t(
     first_commit_datetime: dt.datetime,
     last_commit_datetime: dt.datetime,
     commit_date: dt.datetime,
+    base_datetime: dt.datetime,
 ) -> float:
-    if last_commit_datetime == commit_date:
-        return 1
-
     t = 1 - (
-        (last_commit_datetime - commit_date).total_seconds()
-        / (last_commit_datetime - first_commit_datetime).total_seconds()
+        (base_datetime - commit_date).total_seconds()
+        / (base_datetime - first_commit_datetime).total_seconds()
     )
     return t
 
@@ -76,7 +74,9 @@ def calculate_hotspot(
 
     hotspots = 0
     for log in gitlogs:
-        t = _calculate_t(first_commit_datetime, last_commit_datetime, log.commit_date)
+        t = _calculate_t(
+            first_commit_datetime, last_commit_datetime, log.commit_date, base_datetime_
+        )
         exp_input = (-12 * t) + 12
         hotspots += 1 / (1 + math.exp(exp_input))
 

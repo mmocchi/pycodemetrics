@@ -1,4 +1,5 @@
 import datetime as dt
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -6,17 +7,28 @@ from pydantic import BaseModel
 from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.gitclient.gitcli import get_file_gitlogs
 from pycodemetrics.gitclient.gitlog_parser import parse_gitlogs
-from pycodemetrics.metrics.changelog.hotspot import HotspotMetrics, calculate_hotspot
+from pycodemetrics.metrics.hotspot import HotspotMetrics, calculate_hotspot
 from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 
 
-class AnalizeChangeLogSettings(BaseModel, frozen=True):
+class FilterCodeType(str, Enum):
+    PRODUCT = CodeType.PRODUCT.value
+    TEST = CodeType.TEST.value
+    BOTH = "both"
+
+    @classmethod
+    def to_list(cls):
+        return [e.value for e in cls]
+
+
+class AnalizeHotspotSettings(BaseModel, frozen=True, extra="forbid"):
     base_datetime: dt.datetime
     testcode_type_patterns: list[str] = []
     user_groups: list[UserGroupConfig] = []
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
 
 
-class FileHotspotMetrics(BaseModel, frozen=True):
+class FileHotspotMetrics(BaseModel, frozen=True, extra="forbid"):
     filepath: Path
     code_type: CodeType
     group_name: str
@@ -37,8 +49,8 @@ class FileHotspotMetrics(BaseModel, frozen=True):
         return keys
 
 
-def analyze_changelogs_file(
-    filepath: Path, repo_dir_path: Path, settings: AnalizeChangeLogSettings
+def analyze_hotspot_file(
+    filepath: Path, repo_dir_path: Path, settings: AnalizeHotspotSettings
 ) -> FileHotspotMetrics:
     """
     指定されたパスのGitのコミットLogを解析し、メトリクスを計算します。
@@ -46,7 +58,7 @@ def analyze_changelogs_file(
     Args:
         filepath (Path): 解析するファイルのパス。
         repo_dir_path (Path): Gitリポジトリのパス
-        settings (AnalizeChangeLogSettings): 解析の設定
+        settings (AnalizeHotspotSettings): 解析の設定
 
     Returns:
         FileHotspotMetrics: ファイルパス、計算されたメトリクスを含むFileHotspotMetricsオブジェクト。

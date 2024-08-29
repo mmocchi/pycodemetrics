@@ -4,7 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 
-class GitFileCommitLog(BaseModel, frozen=True):
+class GitFileCommitLog(BaseModel, frozen=True, extra="forbid"):
     filepath: Path
     commit_hash: str
     author: str

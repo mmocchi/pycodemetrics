@@ -10,12 +10,12 @@ from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 logger = logging.getLogger(__name__)
 
 
-class AnalyzePythonSettings(BaseModel, frozen=True):
+class AnalyzePythonSettings(BaseModel, frozen=True, extra="forbid"):
     testcode_type_patterns: list[str] = []
     user_groups: list[UserGroupConfig] = []
 
 
-class PythonFileMetrics(BaseModel, frozen=True):
+class PythonFileMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     Pythonファイルのメトリクスを表すクラス。
 

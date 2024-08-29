@@ -44,17 +44,17 @@ class ExportFormat(str, Enum):
         return f".{self.value}"
 
 
-class InputTargetParameter(BaseModel, frozen=True):
+class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
     path: Path
     with_git_repo: bool
     config_file_path: Path = Path("./pyproject.toml")
 
 
-class DisplayParameter(BaseModel, frozen=True):
+class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     format: DisplayFormat = DisplayFormat.TABLE
 
 
-class ExportParameter(BaseModel, frozen=True):
+class ExportParameter(BaseModel, frozen=True, extra="forbid"):
     export_file_path: Path | None = None
     overwrite: bool = False
 
