@@ -1,7 +1,10 @@
 import datetime as dt
+import logging
 from pathlib import Path
 
 from pycodemetrics.gitclient.models import GitFileCommitLog
+
+logger = logging.getLogger(__name__)
 
 
 def parse_gitlogs(git_file_path: Path, gitlogs: list[str]) -> list[GitFileCommitLog]:
@@ -14,7 +17,11 @@ def parse_gitlogs(git_file_path: Path, gitlogs: list[str]) -> list[GitFileCommit
     parsed_logs = []
 
     for log in gitlogs:
-        commit_hash, author, commit_date, message = log.split(",")
+        try:
+            commit_hash, author, commit_date, message = log.split(",", maxsplit=3)
+        except ValueError:
+            logger.warning(f"Failed to parse the log: {log}. file: {git_file_path}")
+            continue
 
         # commit_date を datetime に変換
         commit_date_dt = dt.datetime.strptime(commit_date, "%Y-%m-%d %H:%M:%S %z")
@@ -24,7 +31,7 @@ def parse_gitlogs(git_file_path: Path, gitlogs: list[str]) -> list[GitFileCommit
                 filepath=git_file_path,
                 commit_hash=commit_hash,
                 author=author,
-                commit_date=commit_date_dt,
+                commit_date=commit_date_dt.astimezone(),
                 message=message,
             )
         )

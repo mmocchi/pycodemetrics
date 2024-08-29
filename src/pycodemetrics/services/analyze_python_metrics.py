@@ -1,12 +1,11 @@
-import fnmatch
 import logging
-from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from pycodemetrics.config.config_manager import UserGroupConfig
 from pycodemetrics.metrics.py.python_metrics import PythonCodeMetrics, compute_metrics
+from pycodemetrics.util.file_util import CodeType, get_group_name, get_product_or_test
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +15,6 @@ class AnalyzePythonSettings(BaseModel, frozen=True):
     user_groups: list[UserGroupConfig] = []
 
 
-class CodeType(Enum):
-    PRODUCT = "product"
-    TEST = "test"
-
-
 class PythonFileMetrics(BaseModel, frozen=True):
     """
     Pythonファイルのメトリクスを表すクラス。
@@ -28,6 +22,7 @@ class PythonFileMetrics(BaseModel, frozen=True):
     属性:
         filepath (str): ファイルのパス。
         product_or_test (CodeType): プロダクトコードかテストコードかを示す。
+        group_name (str): ユーザーが定義したグループ定義のどれに一致するか。
         metrics (PythonCodeMetrics): Pythonコードのメトリクス。
     """
 
@@ -66,26 +61,6 @@ def analyze_python_file(
         group_name=get_group_name(filepath, settings.user_groups),
         metrics=python_code_metrics,
     )
-
-
-def _is_match(
-    filepath: Path,
-    patterns: list[str],
-) -> bool:
-    return any(fnmatch.fnmatch(filepath.as_posix(), pattern) for pattern in patterns)
-
-
-def get_product_or_test(filepath: Path, patterns: list[str]) -> CodeType:
-    if _is_match(filepath, patterns):
-        return CodeType.TEST
-    return CodeType.PRODUCT
-
-
-def get_group_name(filepath: Path, user_groups: list[UserGroupConfig]) -> str:
-    for group in user_groups:
-        if _is_match(filepath, group.patterns):
-            return group.name
-    return "undefined"
 
 
 def _open(filepath: Path) -> str:

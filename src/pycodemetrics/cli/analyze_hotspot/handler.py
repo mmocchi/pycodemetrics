@@ -1,14 +1,20 @@
+import datetime as dt
 import logging
 import os
+from concurrent.futures import as_completed
+from concurrent.futures.process import ProcessPoolExecutor
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 import pandas as pd
 import tabulate
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from tqdm import tqdm
 
+from pycodemetrics.config.config_manager import ConfigManager
 from pycodemetrics.services.analyze_changelogs import (
+    AnalizeChangeLogSettings,
     FileHotspotMetrics,
     analyze_changelogs_file,
 )
@@ -43,6 +49,17 @@ class ExportFormat(str, Enum):
 
 class InputTargetParameter(BaseModel, frozen=True):
     path: Path
+    config_file_path: Path = Path("./pyproject.toml")
+
+
+class RuntimeParameter(BaseModel, frozen=True):
+    workers: int
+
+    @validator("workers", pre=True)
+    def set_workers(cls, value: int):
+        if value is None or value <= 0:
+            return os.cpu_count()
+        return value
 
 
 class DisplayParameter(BaseModel, frozen=True):
@@ -59,7 +76,7 @@ class ExportParameter(BaseModel, frozen=True):
 
 def _diplay(results_df: pd.DataFrame, display_format: DisplayFormat) -> None:
     if display_format == DisplayFormat.TABLE:
-        result_table = tabulate.tabulate(results_df, headers="keys")  # type: ignore
+        result_table = tabulate.tabulate(results_df, headers="keys", floatfmt=".6f")  # type: ignore
         print(result_table)
     elif display_format == DisplayFormat.CSV:
         print(results_df.to_csv(index=False))
@@ -73,16 +90,65 @@ def _diplay(results_df: pd.DataFrame, display_format: DisplayFormat) -> None:
         raise ValueError(f"Invalid display format: {display_format}")
 
 
+@dataclass
+class InputTarget:
+    target_file_full_path: Path
+    git_repo_path: Path
+
+
+def _analyze_hotspot_metrics_file(
+    target_file_path, git_repo_path, settings
+) -> FileHotspotMetrics:
+    return analyze_changelogs_file(target_file_path, git_repo_path, settings)
+
+
 def _analyze_hotspot_metrics(
-    target_file_full_paths: list[Path],
+    target_file_paths: list[Path],
+    git_repo_path: Path,
+    settings: AnalizeChangeLogSettings,
+) -> list[FileHotspotMetrics]:
+    results = []
+
+    for target in tqdm(target_file_paths):
+        try:
+            print(target)
+            result = _analyze_hotspot_metrics_file(target, git_repo_path, settings)
+            print(result)
+            results.append(result)
+        except Exception as e:
+            logger.error(f"Failed to analyze {target}: {e}")
+            continue
+    return results
+
+
+def _analyze_hotspot_metrics_for_multiprocessing(
+    target_file_paths: list[Path],
+    git_repo_path: Path,
+    settings: AnalizeChangeLogSettings,
+    workers: int = 16,
 ) -> list[FileHotspotMetrics]:
     results = []
 
     # TODO: filter supported files
 
-    for target_file_full_path in tqdm(target_file_full_paths):
-        result = analyze_changelogs_file(target_file_full_path)
-        results.append(result)
+    results = []
+    with tqdm(total=len(target_file_paths)) as pbar:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(
+                    _analyze_hotspot_metrics_file, target, git_repo_path, settings
+                )
+                for target in target_file_paths
+            }
+
+            for future in as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    logger.error(f"Failed to analyze {future.exception}: {e}")
+                    continue
+                pbar.update(1)
+
     return results
 
 
@@ -118,27 +184,43 @@ def _export(
 
 def run_analyze_hotspot_metrics(
     input_param: InputTargetParameter,
+    runtime_param: RuntimeParameter,
     display_param: DisplayParameter,
     export_param: ExportParameter,
 ) -> None:
-    base_path = None
-
+    # パラメータの処理
     target_file_paths = get_target_files_by_git_ls_files(input_param.path)
-    base_path = input_param.path
 
     if len(target_file_paths) == 0:
         logger.warning("No python files found in the specified path.")
         return
 
-    target_file_full_paths = [base_path.joinpath(f) for f in target_file_paths]
-
-    results = _analyze_hotspot_metrics(target_file_full_paths)
-
-    results_df = _transform_for_display(results)
-
-    results_df["filepath"] = results_df["filepath"].map(
-        lambda x: os.path.relpath(x, base_path)
+    # 解析の実行
+    config_file_path = input_param.config_file_path
+    settings = AnalizeChangeLogSettings(
+        base_datetime=dt.datetime.now(dt.timezone.utc).astimezone(),
+        testcode_type_patterns=ConfigManager.get_testcode_type_patterns(
+            config_file_path
+        ),
+        user_groups=ConfigManager.get_user_groups(config_file_path),
     )
+
+    if runtime_param.workers <= 1:
+        results = _analyze_hotspot_metrics(
+            target_file_paths, input_param.path, settings
+        )
+    else:
+        results = _analyze_hotspot_metrics_for_multiprocessing(
+            target_file_paths, input_param.path, settings
+        )
+
+    if len(results) == 0:
+        logger.warning("No results found.")
+        return
+
+    # 結果の表示
+    results_df = _transform_for_display(results)
+    results_df = results_df.sort_values("hotspot", ascending=False)
 
     if export_param.with_export():
         _export(results_df, export_param.export_file_path, export_param.overwrite)

@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -9,12 +10,21 @@ from pycodemetrics.cli.analyze_hotspot.handler import (
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
+    RuntimeParameter,
     run_analyze_hotspot_metrics,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @click.command()
 @click.argument("input_repo_path", type=click.Path(exists=True))
+@click.option(
+    "--workers",
+    type=int,
+    default=None,
+    help="Number of workers for parallel processing. Default: None. os.cpu_count() when None",
+)
 @click.option(
     "--format",
     type=click.Choice(DisplayFormat.to_list(), case_sensitive=True),
@@ -35,6 +45,7 @@ from pycodemetrics.cli.analyze_hotspot.handler import (
 )
 def hotspot(
     input_repo_path: str,
+    workers: int | None,
     format: str,
     export: str,
     export_overwrite: bool,
@@ -45,9 +56,13 @@ def hotspot(
     INPUT_REPO_PATH: Path to the target directory of git repository.
     """
 
+    logger.info(
+        f"Start analyze_hotspot_metrics. {input_repo_path=}, {workers=}, {format=}, {export=}, {export_overwrite=}"
+    )
+
     try:
         input_param = InputTargetParameter(path=Path(input_repo_path))
-
+        runtime_param = RuntimeParameter(workers=workers)
         display_param = DisplayParameter(format=DisplayFormat(format))
 
         export_file_path = Path(export) if export else None
@@ -55,7 +70,11 @@ def hotspot(
             export_file_path=export_file_path, overwrite=export_overwrite
         )
 
-        run_analyze_hotspot_metrics(input_param, display_param, export_param)
+        run_analyze_hotspot_metrics(
+            input_param, runtime_param, display_param, export_param
+        )
+
+        logger.info("End analyze_hotspot_metrics. Success.")
         sys.exit(RETURN_CODE.SUCCESS)
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
