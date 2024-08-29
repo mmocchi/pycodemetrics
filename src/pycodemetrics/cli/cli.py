@@ -11,7 +11,10 @@ from pycodemetrics.cli.sandbox import test
 
 @click.group()
 def cli():
-    pass
+    """
+    \b
+    Welcome to PyCodeMetrics!
+    """
 
 
 cli.add_command(analyze_python_metrics)
