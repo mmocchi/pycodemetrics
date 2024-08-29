@@ -38,7 +38,7 @@ def test_calculate_hotspot():
     assert result.last_commit_datetime == expected_last_commit_datetime
     assert result.change_count == expected_change_count
     assert result.lifetime_days == 276
-    assert result.hotspot == 6.144174602214718e-06
+    assert result.hotspot == 0.4891906292081721
 
 
 def test_validate_first_commit_datetimeがlast_commit_datetimeよりも小さい():

@@ -7,11 +7,10 @@ from pycodemetrics.services.analyze_python_metrics import (
     AnalyzePythonSettings,
     CodeType,
     PythonFileMetrics,
-    _is_match,
     _open,
     analyze_python_file,
-    get_code_type,
 )
+from pycodemetrics.util.file_util import _is_match, get_code_type
 
 
 @pytest.fixture

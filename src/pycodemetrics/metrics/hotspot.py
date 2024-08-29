@@ -72,7 +72,7 @@ def calculate_hotspot(
     if base_datetime_ == last_commit_datetime:
         base_datetime_ += dt.timedelta(seconds=1)
 
-    hotspots = 0
+    hotspots: float = 0
     for log in gitlogs:
         t = _calculate_t(
             first_commit_datetime, last_commit_datetime, log.commit_date, base_datetime_

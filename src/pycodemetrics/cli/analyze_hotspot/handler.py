@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import tabulate
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, Field, field_validator
 from tqdm import tqdm
 
 from pycodemetrics.config.config_manager import ConfigManager
@@ -61,14 +61,8 @@ class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
 
 
 class RuntimeParameter(BaseModel, frozen=True, extra="forbid"):
-    workers: int
+    workers: int | None = Field(default_factory=lambda: os.cpu_count())
     filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
-
-    @validator("workers", pre=True)
-    def set_workers(cls, value: int):
-        if value is None or value <= 0:
-            return os.cpu_count()
-        return value
 
 
 class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
@@ -77,21 +71,17 @@ class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     limit: int | None = 10
     sort_column: str = "hotspot"
     sort_desc: bool = True
-    columns: list[Columns] | None = FileHotspotMetrics.get_keys()
+    columns: list[Columns] | None = Field(
+        default_factory=lambda: FileHotspotMetrics.get_keys()
+    )
 
-    @validator("columns", pre=True)
-    def set_columns(cls, value: list[str] | None):
-        if value is None:
-            return FileHotspotMetrics.get_keys()
-        return value
-
-    @validator("sort_column", pre=True)
+    @field_validator("sort_column")
     def set_sort_column(cls, value: str):
         if value not in FileHotspotMetrics.get_keys():
             raise ValueError(f"Invalid sort column: {value}")
         return value
 
-    @validator("limit", pre=True)
+    @field_validator("limit")
     def set_limit(cls, value: int | None):
         if value is None or value <= 0:
             return None
@@ -139,7 +129,7 @@ def _analyze_hotspot_metrics(
     git_repo_path: Path,
     settings: AnalizeHotspotSettings,
 ) -> list[FileHotspotMetrics]:
-    results = []
+    results: list[FileHotspotMetrics] = []
 
     target_file_paths_ = _filter_target(target_file_paths, settings)
 
@@ -159,11 +149,9 @@ def _analyze_hotspot_metrics_for_multiprocessing(
     settings: AnalizeHotspotSettings,
     workers: int = 16,
 ) -> list[FileHotspotMetrics]:
-    results = []
-
     target_file_paths_ = _filter_target(target_file_paths, settings)
 
-    results = []
+    results: list[FileHotspotMetrics] = []
     with tqdm(total=len(target_file_paths_)) as pbar:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {
@@ -184,7 +172,7 @@ def _analyze_hotspot_metrics_for_multiprocessing(
 
 def _transform_for_display(results: list[FileHotspotMetrics]) -> pd.DataFrame:
     results_flat = [result.to_flat() for result in results]
-    return pd.DataFrame(results_flat, columns=results_flat[0].keys())
+    return pd.DataFrame(results_flat, columns=list(results_flat[0].keys()))
 
 
 def _export(
@@ -224,7 +212,11 @@ def _sort(results_df: pd.DataFrame, sort_column: str, sort_desc: bool) -> pd.Dat
     return sorted_df.reset_index(drop=True)
 
 
-def _select_columns(results_df: pd.DataFrame, columns: list[Columns]) -> pd.DataFrame:
+def _select_columns(
+    results_df: pd.DataFrame, columns: list[Columns] | None
+) -> pd.DataFrame:
+    if columns is None:
+        return results_df
     columns = [col.value for col in columns]
     return results_df[columns]
 
@@ -262,7 +254,11 @@ def run_analyze_hotspot_metrics(
         filter_code_type=runtime_param.filter_code_type,
     )
 
-    if runtime_param.workers <= 1:
+    workers = runtime_param.workers or os.cpu_count()
+    if workers is None:
+        raise ValueError("Invalid workers: None")
+
+    if workers <= 1:
         results = _analyze_hotspot_metrics(
             target_file_paths, input_param.path, settings
         )

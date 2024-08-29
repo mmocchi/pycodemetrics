@@ -31,6 +31,6 @@ def foo():
         import_count=2,
         cyclomatic_complexity=1,
         maintainability_index=100.0,
-        cognitive_complexity=0
+        cognitive_complexity=0,
     )
     assert result == expected_metrics

@@ -6,6 +6,7 @@ import click
 
 from pycodemetrics.cli import RETURN_CODE
 from pycodemetrics.cli.analyze_hotspot.handler import (
+    Columns,
     DisplayFormat,
     DisplayParameter,
     ExportParameter,
@@ -89,7 +90,9 @@ def hotspot(
             workers=workers,
             filter_code_type=FilterCodeType(code_type),
         )
-        column_list = [c.strip() for c in columns.split(",")] if columns else None
+        column_list = (
+            [Columns(c.strip()) for c in columns.split(",")] if columns else None
+        )
 
         display_param = DisplayParameter(
             format=DisplayFormat(format),
@@ -98,8 +101,9 @@ def hotspot(
             filter_code_type=FilterCodeType(code_type),
         )
 
-        print(runtime_param)
-        print(display_param)
+        logger.debug(
+            f"RuntimeParameter: {runtime_param}, DisplayParameter: {display_param}"
+        )
 
         export_file_path = Path(export) if export else None
         export_param = ExportParameter(
