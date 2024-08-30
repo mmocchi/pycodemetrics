@@ -1,0 +1,73 @@
+= 使い方
+
+```sh
+poetry run pycodemetrics --help
+Usage: pycodemetrics [OPTIONS] COMMAND [ARGS]...
+
+  Welcome to PyCodeMetrics!
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  analyze  Analyze python metrics in the specified path.
+  hotspot  Analyze hotspot metrics in the specified path.
+```
+
+== analyze コマンド
+
+```sh
+pycodemetrics analyze /path/to/python/file_or_dir
+```
+
+```sh
+poetry run pycodemetrics analyze --help
+Usage: pycodemetrics analyze [OPTIONS] INPUT_PATH
+
+  Analyze python metrics in the specified path.
+
+  INPUT_PATH: Path to the target python file or directory.
+
+Options:
+  --with-git-repo            Analyze python files in the git
+  --format [table|csv|json]  Output format, default: table
+  --export FILE              Export the result to the specified file path. If
+                             not specified, do not export.
+  --export-overwrite         Overwrite the export file if it already exists.
+  --help                     Show this message and exit.
+
+```
+
+
+
+== hotspot コマンド
+
+```sh
+pycodemetrics analyze /path/to/git/repo/dir
+```
+
+```sh
+poetry run pycodemetrics hotspot --help
+Usage: pycodemetrics hotspot [OPTIONS] INPUT_REPO_PATH
+
+  Analyze hotspot metrics in the specified path.
+
+  INPUT_REPO_PATH: Path to the target directory of git repository.
+
+Options:
+  --workers INTEGER               Number of workers for parallel processing.
+                                  Default: None. os.cpu_count() when None
+  --format [table|csv|json]       Output format, default: table
+  --export FILE                   Export the result to the specified file
+                                  path. If not specified, do not export.
+  --export-overwrite              Overwrite the export file if it already
+                                  exists.
+  --columns TEXT                  Columns to display. Default: None. When
+                                  None, display all columns.
+  --limit INTEGER RANGE           Limit the number of files to display.
+                                  Default: 10. And 0 means no limit.  [x>=0]
+  --code-type [product|test|both]
+                                  Filter code type, default: product
+  --help                          Show this message and exit.                  Show this message and exit.
+
+```

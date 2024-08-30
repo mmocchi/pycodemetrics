@@ -1,0 +1,9 @@
+= Install
+
+```sh
+pip install pycodemetrics
+```
+
+```sh
+poetry add pycodemetrics
+```

@@ -1,0 +1,4 @@
+= pycodemetrics
+include::./001_introduction.adoc[leveloffset=+1]
+include::./002_instration.adoc[leveloffset=+1]
+include::./003_usage.adoc[leveloffset=+1]
