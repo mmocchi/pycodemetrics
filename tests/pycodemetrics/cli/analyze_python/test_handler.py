@@ -8,8 +8,8 @@ from pycodemetrics.cli.analyze_python.handler import (
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
-    _diplay,
-    _export,
+    display,
+    export,
     run_analyze_python_metrics,
 )
 
@@ -17,7 +17,7 @@ from pycodemetrics.cli.analyze_python.handler import (
 def test_display_format_by_table(capsys, mocker):
     df = pd.DataFrame([{"a": 1, "b": 2}])
 
-    _diplay(df, DisplayFormat.TABLE)
+    display(df, DisplayFormat.TABLE)
     captured = capsys.readouterr()
     assert "a    b" in captured.out
     assert "1    2" in captured.out
@@ -25,7 +25,7 @@ def test_display_format_by_table(capsys, mocker):
 
 def test_display_format_by_csv(capsys, mocker):
     df = pd.DataFrame([{"a": 1, "b": 2}])
-    _diplay(df, DisplayFormat.CSV)
+    display(df, DisplayFormat.CSV)
     captured = capsys.readouterr()
     assert "a,b" in captured.out
     assert "1,2" in captured.out
@@ -33,7 +33,7 @@ def test_display_format_by_csv(capsys, mocker):
 
 def test_display_format_by_json(capsys, mocker):
     df = pd.DataFrame([{"a": 1, "b": 2}])
-    _diplay(df, DisplayFormat.JSON)
+    display(df, DisplayFormat.JSON)
     captured = capsys.readouterr()
     assert '[\n  {\n    "a":1,\n    "b":2\n  }\n]\n' in captured.out
 
@@ -44,7 +44,7 @@ def test_export(tmp_path, mocker):
 
     assert not export_path.exists()
 
-    _export(df, export_path)
+    export(df, export_path)
     assert export_path.exists()
 
 
@@ -53,7 +53,7 @@ def test_export_already_exist_error(tmp_path, mocker):
     export_path = tmp_path.joinpath("test.csv")
     export_path.touch()
     with pytest.raises(FileExistsError):
-        _export(df, export_path)
+        export(df, export_path)
 
 
 def test_export_already_exist_overwrite(tmp_path, mocker):
@@ -62,7 +62,7 @@ def test_export_already_exist_overwrite(tmp_path, mocker):
     export_path.touch()
 
     assert export_path.exists()
-    _export(df, export_path, overwrite=True)
+    export(df, export_path, overwrite=True)
 
     assert export_path.exists()
 

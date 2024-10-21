@@ -70,7 +70,7 @@ class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     sort_column: Column = Column.filepath  # type: ignore
     sort_desc: bool = True
     columns: list[Column] | None = Field(
-        default_factory=lambda: PythonFileMetrics.get_keys()
+        default_factory=lambda: [Column(k) for k in PythonFileMetrics.get_keys()]
     )
 
     @field_validator("sort_column")

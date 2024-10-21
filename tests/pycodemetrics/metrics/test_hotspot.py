@@ -37,7 +37,7 @@ def test_calculate_hotspot():
     assert result.first_commit_datetime == expected_first_commit_datetime
     assert result.last_commit_datetime == expected_last_commit_datetime
     assert result.change_count == expected_change_count
-    assert result.lifetime_days == 276
+    assert result.lifetime_days == 277
     assert result.hotspot == 0.4891906292081721
 
 
@@ -49,6 +49,7 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeよりも小さい
         change_count=3,
         first_commit_datetime=dt.datetime(2023, 1, 1),
         last_commit_datetime=dt.datetime(2023, 1, 3),
+        base_datetime=dt.datetime(2023, 1, 10),
         hotspot=0.0,
     )
 
@@ -65,6 +66,7 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeと同じ日時():
         change_count=3,
         first_commit_datetime=dt.datetime(2023, 1, 1),
         last_commit_datetime=dt.datetime(2023, 1, 1),
+        base_datetime=dt.datetime(2023, 1, 10),
         hotspot=0.0,
     )
 
@@ -82,5 +84,6 @@ def test_validate_first_commit_datetimeがlast_commit_datetimeよりも大きい
             change_count=3,
             first_commit_datetime=dt.datetime(2023, 1, 3),
             last_commit_datetime=dt.datetime(2023, 1, 1),
+            base_datetime=dt.datetime(2023, 1, 10),
             hotspot=0.0,
         )
