@@ -42,6 +42,10 @@ class PythonCodeMetrics(BaseModel, frozen=True, extra="forbid"):
     def to_dict(self) -> dict:
         return self.model_dump()
 
+    @classmethod
+    def get_keys(cls):
+        return cls.model_fields.keys()
+
 
 def compute_metrics(code: str) -> PythonCodeMetrics:
     """

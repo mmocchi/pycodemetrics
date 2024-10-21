@@ -4,13 +4,15 @@ from enum import Enum
 from pathlib import Path
 
 import pandas as pd
-import tabulate
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from tqdm import tqdm
 
+from pycodemetrics.cli.display_util import DisplayFormat, display, head_for_display
+from pycodemetrics.cli.exporter import export
 from pycodemetrics.config.config_manager import ConfigManager
 from pycodemetrics.services.analyze_python_metrics import (
     AnalyzePythonSettings,
+    FilterCodeType,
     PythonFileMetrics,
     analyze_python_file,
 )
@@ -21,86 +23,86 @@ from pycodemetrics.util.file_util import (
 
 logger = logging.getLogger(__name__)
 
-
-class DisplayFormat(str, Enum):
-    TABLE = "table"
-    CSV = "csv"
-    JSON = "json"
-
-    @classmethod
-    def to_list(cls):
-        return [e.value for e in cls]
-
-
-class ExportFormat(str, Enum):
-    CSV = "csv"
-    JSON = "json"
-
-    @classmethod
-    def to_list(cls):
-        return [e.value for e in cls]
-
-    def get_ext(self):
-        return f".{self.value}"
+Column = Enum(  # type: ignore[misc]
+    "Column",
+    ((value, value) for value in PythonFileMetrics.get_keys()),
+    type=str,
+)
 
 
 class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
+    """
+    Input parameters for the target python file or directory.
+
+    path (Path): Path to the target python file or directory.
+    with_git_repo (bool): Analyze python files in the git.
+    config_file_path (Path): Path to the configuration file.
+    """
+
     path: Path
     with_git_repo: bool
     config_file_path: Path = Path("./pyproject.toml")
 
 
+class RuntimeParameter(BaseModel, frozen=True, extra="forbid"):
+    """
+    Runtime parameter for analyze_hotspot_metrics
+
+    Args:
+        workers (int | None): Number of workers for multiprocessing. If None, use the number of CPUs.
+        filter_code_type (FilterCodeType): Filter code type.
+    """
+
+    workers: int | None = Field(default_factory=lambda: os.cpu_count())
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
+
+
 class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
+    """
+    Display parameters for the result.
+
+    format (DisplayFormat): Display format for the result.
+    """
+
     format: DisplayFormat = DisplayFormat.TABLE
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
+    limit: int | None = 10
+    sort_column: Column = Column.filepath  # type: ignore
+    sort_desc: bool = True
+    columns: list[Column] | None = Field(
+        default_factory=lambda: [Column(k) for k in PythonFileMetrics.get_keys()]
+    )
+
+    @field_validator("sort_column")
+    def set_sort_column(cls, value: str):
+        if value not in PythonFileMetrics.get_keys():
+            raise ValueError(f"Invalid sort column: {value}")
+        return value
+
+    @field_validator("limit")
+    def set_limit(cls, value: int | None):
+        if value is None or value <= 0:
+            return None
+        return value
 
 
 class ExportParameter(BaseModel, frozen=True, extra="forbid"):
+    """
+    Export parameters for the result.
+
+    export_file_path (Path): Path to the export file.
+    overwrite (bool): Overwrite the export file if it already exists.
+    """
+
     export_file_path: Path | None = None
     overwrite: bool = False
 
-    def with_export(self):
+    def with_export(self) -> bool:
+        """
+        Returns:
+            bool: エクスポートするかどうか
+        """
         return self.export_file_path is not None
-
-
-def _diplay(results_df: pd.DataFrame, display_format: DisplayFormat) -> None:
-    if display_format == DisplayFormat.TABLE:
-        result_table = tabulate.tabulate(results_df, headers="keys")  # type: ignore
-        print(result_table)
-    elif display_format == DisplayFormat.CSV:
-        print(results_df.to_csv(index=False))
-    elif display_format == DisplayFormat.JSON:
-        print(
-            results_df.to_json(
-                orient="records", indent=2, force_ascii=False, default_handler=str
-            )
-        )
-    else:
-        raise ValueError(f"Invalid display format: {display_format}")
-
-
-def _export(
-    results_df: pd.DataFrame,
-    export_file_path: Path | None,
-    overwrite: bool = False,
-) -> None:
-    if export_file_path is None:
-        raise ValueError("Export file path is not specified")
-
-    if export_file_path.exists() and not overwrite:
-        raise FileExistsError(
-            f"{export_file_path} already exists. Use --overwrite option to overwrite the file"
-        )
-
-    export_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if export_file_path.suffix == ExportFormat.CSV.get_ext():
-        results_df.to_csv(export_file_path, index=False)
-    elif export_file_path.suffix == ExportFormat.JSON.get_ext():
-        results_df.to_json(
-            export_file_path, orient="records", indent=4, force_ascii=False
-        )
-    else:
-        raise ValueError(f"Invalid export format: {export_file_path.suffix}")
 
 
 def _analyze_python_metrics(
@@ -123,7 +125,64 @@ def _analyze_python_metrics(
 
 def _transform_for_display(results: list[PythonFileMetrics]) -> pd.DataFrame:
     results_flat = [result.to_flat() for result in results]
-    return pd.DataFrame(results_flat, columns=results_flat[0].keys())
+    return pd.DataFrame(results_flat, columns=list(results_flat[0].keys()))
+
+
+def _filter_for_display_by_code_type(
+    results_df: pd.DataFrame, filter_code_type: FilterCodeType
+) -> pd.DataFrame:
+    """
+    Filter the result of analyze_hotspot_metrics for display by code type
+
+    Args:
+        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
+        filter_code_type (FilterCodeType): Filter code type.
+
+    Returns:
+        pd.DataFrame: Filtered result for display.
+    """
+    if filter_code_type == FilterCodeType.BOTH:
+        return results_df
+
+    return results_df[results_df["code_type"] == filter_code_type.value]
+
+
+def _sort_value_for_display(
+    results_df: pd.DataFrame, sort_column: Column, sort_desc: bool
+) -> pd.DataFrame:
+    """
+    Sort the result of analyze_hotspot_metrics for display
+
+    Args:
+        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
+        sort_column (Column): Column to sort the result.
+        sort_desc (bool): Sort the result in descending order.
+
+    Returns:
+        pd.DataFrame: Sorted result for display.
+    """
+
+    sorted_df = results_df.sort_values(sort_column.value, ascending=not sort_desc)
+    return sorted_df.reset_index(drop=True)
+
+
+def _select_columns_for_display(
+    results_df: pd.DataFrame, columns: list[Column] | None
+) -> pd.DataFrame:
+    """
+    Select columns to display from the result of analyze_hotspot_metrics
+
+    Args:
+        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
+        columns (list[Columns] | None): Columns to display. If None, display all columns.
+
+    Returns:
+        pd.DataFrame: Selected columns for display.
+    """
+    if columns is None:
+        return results_df
+    columns = [col.value for col in columns]
+    return results_df[columns]
 
 
 def run_analyze_python_metrics(
@@ -131,6 +190,16 @@ def run_analyze_python_metrics(
     display_param: DisplayParameter,
     export_param: ExportParameter,
 ) -> None:
+    """
+    Run the analyze python metrics.
+
+    Args:
+        input_param (InputTargetParameter): The input parameters.
+        display_param (DisplayParameter): The display parameters.
+        export_param (ExportParameter): The export parameters.
+    """
+
+    # パラメータの解釈
     base_path = None
     if input_param.with_git_repo:
         target_file_paths = get_target_files_by_git_ls_files(input_param.path)
@@ -155,9 +224,15 @@ def run_analyze_python_metrics(
         ),
         user_groups=ConfigManager.get_user_groups(config_file_path),
     )
+
+    # メイン処理の実行
     results = _analyze_python_metrics(target_file_full_paths, analyze_settings)
 
+    # 結果の整形
     results_df = _transform_for_display(results)
+    if len(results) == 0:
+        logger.warning("No results found.")
+        return
 
     if base_path is None:
         pass
@@ -166,7 +241,18 @@ def run_analyze_python_metrics(
             lambda x: os.path.relpath(x, base_path)
         )
 
-    if export_param.with_export():
-        _export(results_df, export_param.export_file_path, export_param.overwrite)
+    # 結果の表示
+    display_df = results_df.copy()
+    display_df = _filter_for_display_by_code_type(
+        display_df, display_param.filter_code_type
+    )
+    display_df = _sort_value_for_display(
+        display_df, display_param.sort_column, display_param.sort_desc
+    )
+    display_df = _select_columns_for_display(display_df, display_param.columns)
+    display_df = head_for_display(display_df, display_param.limit)
 
-    _diplay(results_df, display_param.format)
+    if export_param.with_export():
+        export(results_df, export_param.export_file_path, export_param.overwrite)
+
+    display(display_df, display_param.format)

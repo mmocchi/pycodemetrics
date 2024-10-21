@@ -8,9 +8,20 @@ from pycodemetrics.gitclient.models import GitFileCommitLog
 
 
 class HotspotMetrics(BaseModel, frozen=True, extra="forbid"):
+    """
+    Hotspot metrics.
+
+    change_count (int): The number of changes.
+    first_commit_datetime (dt.datetime): The first commit datetime.
+    last_commit_datetime (dt.datetime): The last commit datetime.
+    base_datetime (dt.datetime): The base datetime.
+    hotspot (float): The hotspot metric.
+    """
+
     change_count: int
     first_commit_datetime: dt.datetime
     last_commit_datetime: dt.datetime
+    base_datetime: dt.datetime
     hotspot: float
 
     @model_validator(mode="after")
@@ -24,7 +35,7 @@ class HotspotMetrics(BaseModel, frozen=True, extra="forbid"):
     @computed_field(return_type=int)  # type: ignore
     @property
     def lifetime_days(self):
-        return (self.last_commit_datetime - self.first_commit_datetime).days
+        return (self.base_datetime - self.first_commit_datetime).days
 
     def to_dict(self) -> dict:
         return self.model_dump()
@@ -84,5 +95,6 @@ def calculate_hotspot(
         change_count=num_of_changes,
         first_commit_datetime=first_commit_datetime,
         last_commit_datetime=last_commit_datetime,
+        base_datetime=base_datetime_,
         hotspot=hotspots,
     )

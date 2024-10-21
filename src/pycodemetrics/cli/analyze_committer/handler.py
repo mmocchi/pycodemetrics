@@ -5,6 +5,7 @@ from concurrent.futures import as_completed
 from concurrent.futures.process import ProcessPoolExecutor
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, Field, field_validator
@@ -13,11 +14,11 @@ from tqdm import tqdm
 from pycodemetrics.cli.display_util import DisplayFormat, display, head_for_display
 from pycodemetrics.cli.exporter import export
 from pycodemetrics.config.config_manager import ConfigManager
-from pycodemetrics.services.analyze_hotspot import (
-    AnalizeHotspotSettings,
-    FileHotspotMetrics,
+from pycodemetrics.services.analyze_committer import (
+    AnalizeCommitterSettings,
+    FileChangeCountMetrics,
     FilterCodeType,
-    analyze_hotspot_file,
+    aggregate_changecount_by_committer,
 )
 from pycodemetrics.util.file_util import (
     get_code_type,
@@ -27,11 +28,17 @@ from pycodemetrics.util.file_util import (
 logger = logging.getLogger(__name__)
 
 
-Column = Enum(  # type: ignore[misc]
-    "Column",
-    ((value, value) for value in FileHotspotMetrics.get_keys()),
-    type=str,
-)
+class DisplayColumn(str, Enum):
+    COMMITTER = "committer"
+    CHANGE_COUNT = "change_count"
+
+    @classmethod
+    def keys(cls) -> list["DisplayColumn"]:
+        return [e for e in cls]
+
+    @classmethod
+    def to_list(cls) -> list[str]:
+        return [e.value for e in cls]
 
 
 class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
@@ -68,7 +75,7 @@ class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
         format (DisplayFormat): Display format.
         filter_code_type (FilterCodeType): Filter code type.
         limit (int | None): Limit the number of files to display. If None, display all files.
-        sort_column (Column): Column to sort the result.
+        sort_column (str): Column to sort the result.
         sort_desc (bool): Sort the result in descending order.
         columns (list[Columns] | None): Columns to display. If None, display all columns.
     """
@@ -76,15 +83,15 @@ class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     format: DisplayFormat = DisplayFormat.TABLE
     filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
     limit: int | None = 10
-    sort_column: Column = Column.hotspot  # type: ignore
+    sort_column: DisplayColumn = DisplayColumn.CHANGE_COUNT  # type: ignore
     sort_desc: bool = True
-    columns: list[Column] | None = Field(
-        default_factory=lambda: FileHotspotMetrics.get_keys()
+    columns: list[DisplayColumn] | None = Field(
+        default_factory=lambda: DisplayColumn.keys()
     )
 
     @field_validator("sort_column")
     def set_sort_column(cls, value: str):
-        if value not in FileHotspotMetrics.get_keys():
+        if value not in DisplayColumn.to_list():
             raise ValueError(f"Invalid sort column: {value}")
         return value
 
@@ -116,18 +123,8 @@ class ExportParameter(BaseModel, frozen=True, extra="forbid"):
 
 
 def _filter_target_by_code_type(
-    target_file_paths: list[Path], settings: AnalizeHotspotSettings
+    target_file_paths: list[Path], settings: AnalizeCommitterSettings
 ) -> list[Path]:
-    """
-    Filter target files by code type
-
-    Args:
-        target_file_paths (list[Path]): List of target file paths.
-        settings (AnalizeHotspotSettings): Settings for analyze_hotspot_metrics.
-
-    Returns:
-        list[Path]: Filtered target file paths.
-    """
     if settings.filter_code_type == FilterCodeType.BOTH:
         return target_file_paths
 
@@ -139,18 +136,18 @@ def _filter_target_by_code_type(
     ]
 
 
-def _analyze_hotspot_metrics(
+def _analyze_committer_metrics(
     target_file_paths: list[Path],
     git_repo_path: Path,
-    settings: AnalizeHotspotSettings,
-) -> list[FileHotspotMetrics]:
-    results: list[FileHotspotMetrics] = []
+    settings: AnalizeCommitterSettings,
+) -> list[FileChangeCountMetrics]:
+    results: list[FileChangeCountMetrics] = []
 
     target_file_paths_ = _filter_target_by_code_type(target_file_paths, settings)
 
     for target in tqdm(target_file_paths_):
         try:
-            result = analyze_hotspot_file(target, git_repo_path, settings)
+            result = aggregate_changecount_by_committer(target, git_repo_path, settings)
             results.append(result)
         except Exception as e:
             logger.error(f"Failed to analyze {target}: {e}")
@@ -161,16 +158,18 @@ def _analyze_hotspot_metrics(
 def _analyze_hotspot_metrics_for_multiprocessing(
     target_file_paths: list[Path],
     git_repo_path: Path,
-    settings: AnalizeHotspotSettings,
+    settings: AnalizeCommitterSettings,
     workers: int = 16,
-) -> list[FileHotspotMetrics]:
+) -> list[FileChangeCountMetrics]:
     target_file_paths_ = _filter_target_by_code_type(target_file_paths, settings)
 
-    results: list[FileHotspotMetrics] = []
+    results: list[FileChangeCountMetrics] = []
     with tqdm(total=len(target_file_paths_)) as pbar:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {
-                executor.submit(analyze_hotspot_file, target, git_repo_path, settings)
+                executor.submit(
+                    aggregate_changecount_by_committer, target, git_repo_path, settings
+                )
                 for target in target_file_paths_
             }
 
@@ -185,28 +184,39 @@ def _analyze_hotspot_metrics_for_multiprocessing(
     return results
 
 
-def _transform_for_display(results: list[FileHotspotMetrics]) -> pd.DataFrame:
+def _transform_for_display(results: list[FileChangeCountMetrics]) -> pd.DataFrame:
     """
-    Transform the result of analyze_hotspot_metrics for display
+    Transform the result of analyze_committer_metrics for display
 
     Args:
-        results (list[FileHotspotMetrics]): Result of analyze_hotspot_metrics.
+        results (list[FileChangeCountMetrics]): Result of analyze_committer_metrics.
 
     Returns:
         pd.DataFrame: Transformed result for display.
     """
-    results_flat = [result.to_flat() for result in results]
-    return pd.DataFrame(results_flat, columns=list(results_flat[0].keys()))
+    results_flat: list[dict[str, Any]] = []
+    for result in results:
+        results_flat = results_flat + result.to_flatten_list()
+    flat_df = pd.DataFrame(results_flat, columns=list(results_flat[0].keys()))
+
+    # aggreage by committer
+    results_df = (
+        flat_df[["committer", "change_count"]]
+        .groupby(["committer"])
+        .sum()
+        .reset_index()
+    )
+    return results_df
 
 
 def _filter_for_display_by_code_type(
     results_df: pd.DataFrame, filter_code_type: FilterCodeType
 ) -> pd.DataFrame:
     """
-    Filter the result of analyze_hotspot_metrics for display by code type
+    Filter the result of analyze_committer_metrics for display by code type
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
+        results_df (pd.DataFrame): Result of analyze_committer_metrics.
         filter_code_type (FilterCodeType): Filter code type.
 
     Returns:
@@ -219,13 +229,13 @@ def _filter_for_display_by_code_type(
 
 
 def _sort_value_for_display(
-    results_df: pd.DataFrame, sort_column: Column, sort_desc: bool
+    results_df: pd.DataFrame, sort_column: DisplayColumn, sort_desc: bool
 ) -> pd.DataFrame:
     """
-    Sort the result of analyze_hotspot_metrics for display
+    Sort the result of analyze_committer_metrics for display
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
+        results_df (pd.DataFrame): Result of analyze_committer_metrics.
         sort_column (Column): Column to sort the result.
         sort_desc (bool): Sort the result in descending order.
 
@@ -238,40 +248,30 @@ def _sort_value_for_display(
 
 
 def _select_columns_for_display(
-    results_df: pd.DataFrame, columns: list[Column] | None
+    results_df: pd.DataFrame, columns: list[DisplayColumn] | None
 ) -> pd.DataFrame:
     """
-    Select columns to display from the result of analyze_hotspot_metrics
+    Select columns to display from the result of analyze_committer_metrics
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
-        columns (list[Columns] | None): Columns to display. If None, display all columns.
+        results_df (pd.DataFrame): Result of analyze_committer_metrics.
+        columns (list[DisplayColumn] | None): Columns to display. If None, display all columns.
 
     Returns:
         pd.DataFrame: Selected columns for display.
     """
     if columns is None:
         return results_df
-    columns = [col.value for col in columns]
-    return results_df[columns]
+    selected_columns = [col.value for col in columns]
+    return results_df[selected_columns]
 
 
-def run_analyze_hotspot_metrics(
+def run_analyze_committer_metrics(
     input_param: InputTargetParameter,
     runtime_param: RuntimeParameter,
     display_param: DisplayParameter,
     export_param: ExportParameter,
 ) -> None:
-    """
-    Run analyze_hotspot_metrics
-
-    Args:
-        input_param (InputTargetParameter): Input parameter for analyze_hotspot_metrics.
-        runtime_param (RuntimeParameter): Runtime parameter for analyze_hotspot_metrics.
-        display_param (DisplayParameter): Display parameter for analyze_hotspot_metrics.
-        export_param (ExportParameter): Export parameter for analyze_hotspot_metrics.
-    """
-
     # パラメータの処理
     target_file_paths = get_target_files_by_git_ls_files(input_param.path)
 
@@ -281,7 +281,7 @@ def run_analyze_hotspot_metrics(
 
     # 解析の実行
     config_file_path = input_param.config_file_path
-    settings = AnalizeHotspotSettings(
+    settings = AnalizeCommitterSettings(
         base_datetime=dt.datetime.now(dt.timezone.utc).astimezone(),
         testcode_type_patterns=ConfigManager.get_testcode_type_patterns(
             config_file_path
@@ -295,7 +295,7 @@ def run_analyze_hotspot_metrics(
         raise ValueError("Invalid workers: None")
 
     if workers <= 1:
-        results = _analyze_hotspot_metrics(
+        results = _analyze_committer_metrics(
             target_file_paths, input_param.path, settings
         )
     else:
@@ -307,14 +307,10 @@ def run_analyze_hotspot_metrics(
         logger.warning("No results found.")
         return
 
-    # 結果の整形
+    # 結果の表示
     results_df = _transform_for_display(results)
 
-    # 結果の表示
     display_df = results_df.copy()
-    display_df = _filter_for_display_by_code_type(
-        display_df, display_param.filter_code_type
-    )
     display_df = _sort_value_for_display(
         display_df, display_param.sort_column, display_param.sort_desc
     )
