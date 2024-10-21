@@ -12,6 +12,7 @@ from pycodemetrics.cli.analyze_python.handler import (
 
 
 def test_run_analyze_python_metrics(tmp_path, capsys):
+    # Arrange
     # テスト用のPythonファイルを作成
     test_file = tmp_path / "test_file.py"
 
@@ -31,11 +32,14 @@ class ExampleClass:
     display_param = DisplayParameter(format=DisplayFormat.TABLE)
     export_param = ExportParameter(export_file_path=None)
 
+    # Act
     # 解析を実行
     run_analyze_python_metrics(input_param, display_param, export_param)
 
     # 標準出力をキャプチャ
     captured = capsys.readouterr()
+
+    # Assert
 
     # 期待される出力の検証
     assert "test_file.py" in captured.out
@@ -63,6 +67,7 @@ class ExampleClass:
 
 
 def test_run_analyze_python_metrics_with_export(tmp_path):
+    # Arrange
     # テスト用のPythonファイルを作成
     test_file = tmp_path / "test_file.py"
     test_file.write_text("""
@@ -76,9 +81,11 @@ def example_function():
     display_param = DisplayParameter(format=DisplayFormat.CSV)
     export_param = ExportParameter(export_file_path=export_file)
 
+    # Act
     # 解析を実行
     run_analyze_python_metrics(input_param, display_param, export_param)
 
+    # Assert
     # エクスポートファイルの存在を確認
     assert export_file.exists()
 
