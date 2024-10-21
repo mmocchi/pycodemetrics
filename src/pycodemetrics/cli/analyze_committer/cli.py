@@ -5,16 +5,16 @@ from pathlib import Path
 import click
 
 from pycodemetrics.cli import RETURN_CODE
-from pycodemetrics.cli.analyze_hotspot.handler import (
+from pycodemetrics.cli.analyze_committer.handler import (
     Column,
     DisplayFormat,
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
     RuntimeParameter,
-    run_analyze_hotspot_metrics,
+    run_analyze_committier_metrics,
 )
-from pycodemetrics.services.analyze_hotspot import FilterCodeType
+from pycodemetrics.services.analyze_committer import FilterCodeType
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
     default=FilterCodeType.PRODUCT.value,
     help=f"Filter code type, default: {FilterCodeType.PRODUCT.value}",
 )
-def hotspot(
+def committer(
     input_repo_path: str,
     workers: int | None,
     format: str,
@@ -73,15 +73,8 @@ def hotspot(
     limit: int,
     code_type: str,
 ):
-    """
-    Analyze hotspot metrics in the specified path.
-
-    INPUT_REPO_PATH: Path to the target directory of git repository.
-
-    """
-
     logger.info(
-        f"Start analyze_hotspot_metrics. {input_repo_path=}, {workers=}, {format=}, {export=}, {export_overwrite=}"
+        f"Start analyze_committier_metrics. {input_repo_path=}, {workers=}, {format=}, {export=}, {export_overwrite=}"
     )
 
     try:
@@ -112,7 +105,7 @@ def hotspot(
         )
 
         # メイン処理の実行
-        run_analyze_hotspot_metrics(
+        run_analyze_committier_metrics(
             input_param, runtime_param, display_param, export_param
         )
 

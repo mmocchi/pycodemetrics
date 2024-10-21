@@ -10,6 +10,13 @@ logger = logging.getLogger(__name__)
 def parse_gitlogs(git_file_path: Path, gitlogs: list[str]) -> list[GitFileCommitLog]:
     """
     Parse the git logs and return a list of logs.
+
+    Args:
+        git_file_path (Path): The path to the git file.
+        gitlogs (list[str]): The git logs.
+
+    Returns:
+        list[GitFileCommitLog]: The parsed git logs.
     """
     if len(gitlogs) == 0:
         return []

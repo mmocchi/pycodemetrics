@@ -5,12 +5,14 @@ import click
 
 from pycodemetrics.cli import RETURN_CODE
 from pycodemetrics.cli.analyze_python.handler import (
+    Column,
     DisplayFormat,
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
     run_analyze_python_metrics,
 )
+from pycodemetrics.services.analyze_python_metrics import FilterCodeType
 
 
 @click.command()
@@ -39,12 +41,33 @@ from pycodemetrics.cli.analyze_python.handler import (
     default=False,
     help="Overwrite the export file if it already exists.",
 )
+@click.option(
+    "--columns",
+    type=str,
+    default=None,
+    help="Columns to display. Default: None. When None, display all columns.",
+)
+@click.option(
+    "--limit",
+    type=click.IntRange(min=0),
+    default=0,
+    help="Limit the number of files to display. Default: 10. And 0 means no limit.",
+)
+@click.option(
+    "--code-type",
+    type=click.Choice(FilterCodeType.to_list(), case_sensitive=True),
+    default=FilterCodeType.PRODUCT.value,
+    help=f"Filter code type, default: {FilterCodeType.PRODUCT.value}",
+)
 def analyze(
     input_path: str,
     with_git_repo: bool,
     format: str,
     export: str,
     export_overwrite: bool,
+    columns: str | None,
+    limit: int,
+    code_type: str,
 ):
     """
     Analyze python metrics in the specified path.
@@ -53,17 +76,28 @@ def analyze(
     """
 
     try:
+        # パラメータの設定
         input_param = InputTargetParameter(
             path=Path(input_path), with_git_repo=with_git_repo
         )
 
-        display_param = DisplayParameter(format=DisplayFormat(format))
+        column_list = (
+            [Column(c.strip()) for c in columns.split(",")] if columns else None
+        )
+
+        display_param = DisplayParameter(
+            format=DisplayFormat(format),
+            columns=column_list,
+            limit=limit,
+            filter_code_type=FilterCodeType(code_type),
+        )
 
         export_file_path = Path(export) if export else None
         export_param = ExportParameter(
             export_file_path=export_file_path, overwrite=export_overwrite
         )
 
+        # メイン処理の実行
         run_analyze_python_metrics(input_param, display_param, export_param)
         sys.exit(RETURN_CODE.SUCCESS)
     except Exception as e:

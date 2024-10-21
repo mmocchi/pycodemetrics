@@ -1,5 +1,7 @@
 import logging
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -10,20 +12,49 @@ from pycodemetrics.util.file_util import CodeType, get_code_type, get_group_name
 logger = logging.getLogger(__name__)
 
 
+class FilterCodeType(str, Enum):
+    """
+    Filter code type.
+
+    PRODUCT: Filter product code.
+    TEST: Filter test code.
+    BOTH: Filter both product and test code.
+    """
+
+    PRODUCT = CodeType.PRODUCT.value
+    TEST = CodeType.TEST.value
+    BOTH = "both"
+
+    @classmethod
+    def to_list(cls) -> list[str]:
+        """
+        Returns:
+            list code types.
+        """
+        return [e.value for e in cls]
+
+
 class AnalyzePythonSettings(BaseModel, frozen=True, extra="forbid"):
+    """
+    Pythonファイルの解析設定を表すクラス。
+
+    testcode_type_patterns (list[str]): テストコードのファイルパスパターン。
+    user_groups (list[UserGroupConfig]): ユーザーが定義したグループ定義。
+    """
+
     testcode_type_patterns: list[str] = []
     user_groups: list[UserGroupConfig] = []
+    filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
 
 
 class PythonFileMetrics(BaseModel, frozen=True, extra="forbid"):
     """
     Pythonファイルのメトリクスを表すクラス。
 
-    属性:
-        filepath (str): ファイルのパス。
-        code_type (CodeType): プロダクトコードかテストコードかを示す。
-        group_name (str): ユーザーが定義したグループ定義のどれに一致するか。
-        metrics (PythonCodeMetrics): Pythonコードのメトリクス。
+    filepath (str): ファイルのパス。
+    code_type (CodeType): プロダクトコードかテストコードかを示す。
+    group_name (str): ユーザーが定義したグループ定義のどれに一致するか。
+    metrics (PythonCodeMetrics): Pythonコードのメトリクス。
     """
 
     filepath: Path
@@ -31,13 +62,19 @@ class PythonFileMetrics(BaseModel, frozen=True, extra="forbid"):
     group_name: str
     metrics: PythonCodeMetrics
 
-    def to_flat(self):
+    def to_flat(self) -> dict[str, Any]:
         return {
             "filepath": self.filepath,
             "code_type": self.code_type.value,
             "group_name": self.group_name,
             **self.metrics.to_dict(),
         }
+
+    @classmethod
+    def get_keys(cls):
+        keys = [k for k in cls.model_fields.keys() if k != "metrics"]
+        keys.extend(PythonCodeMetrics.get_keys())
+        return keys
 
 
 def analyze_python_file(
