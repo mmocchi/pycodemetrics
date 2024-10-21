@@ -6,13 +6,13 @@ import click
 
 from pycodemetrics.cli import RETURN_CODE
 from pycodemetrics.cli.analyze_committer.handler import (
-    Column,
+    DisplayColumn,
     DisplayFormat,
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
     RuntimeParameter,
-    run_analyze_committier_metrics,
+    run_analyze_committer_metrics,
 )
 from pycodemetrics.services.analyze_committer import FilterCodeType
 
@@ -74,7 +74,7 @@ def committer(
     code_type: str,
 ):
     logger.info(
-        f"Start analyze_committier_metrics. {input_repo_path=}, {workers=}, {format=}, {export=}, {export_overwrite=}"
+        f"Start analyze_committer_metrics. {input_repo_path=}, {workers=}, {format=}, {export=}, {export_overwrite=}"
     )
 
     try:
@@ -85,7 +85,7 @@ def committer(
             filter_code_type=FilterCodeType(code_type),
         )
         column_list = (
-            [Column(c.strip()) for c in columns.split(",")] if columns else None
+            [DisplayColumn(c.strip()) for c in columns.split(",")] if columns else None
         )
 
         display_param = DisplayParameter(
@@ -105,7 +105,7 @@ def committer(
         )
 
         # メイン処理の実行
-        run_analyze_committier_metrics(
+        run_analyze_committer_metrics(
             input_param, runtime_param, display_param, export_param
         )
 

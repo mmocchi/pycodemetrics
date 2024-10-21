@@ -34,35 +34,54 @@ class FilterCodeType(str, Enum):
         return [e.value for e in cls]
 
 
-class AnalizeCommittierSettings(BaseModel, frozen=True, extra="forbid"):
+class AnalizeCommitterSettings(BaseModel, frozen=True, extra="forbid"):
     base_datetime: dt.datetime
     testcode_type_patterns: list[str] = []
     user_groups: list[UserGroupConfig] = []
     filter_code_type: FilterCodeType = FilterCodeType.PRODUCT
 
 
-class FileChangeCountMetrics(BaseModel, frozen=True, extra="forbid"):
-    filepath: Path
-    change_count: Counter
+class CommitterChangeCount(BaseModel, frozen=True, extra="forbid"):
+    committer: str
+    change_count: int
 
-    def to_flat(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
-            "filepath": self.filepath,
-            **dict(self.change_count),
+            "committer": self.committer,
+            "change_count": self.change_count,
         }
 
-    @classmethod
-    def get_keys(cls):
-        keys = [k for k in cls.model_fields.keys()]
-        return keys
+
+class FileChangeCountMetrics(BaseModel, frozen=True, extra="forbid"):
+    filepath: Path
+    change_counts: list[CommitterChangeCount]
+
+    def to_flatten_list(self) -> list[dict[str, Any]]:
+        results = []
+        for change_count in self.change_counts:
+            results.append(
+                {
+                    "filepath": self.filepath,
+                    "committer": change_count.committer,
+                    "change_count": change_count.change_count,
+                }
+            )
+        return results
 
 
-def aggregate_changecount_by_commiter(
-    filepath: Path, repo_dir_path: Path, settings: AnalizeCommittierSettings
+def aggregate_changecount_by_committer(
+    filepath: Path, repo_dir_path: Path, settings: AnalizeCommitterSettings
 ) -> FileChangeCountMetrics:
     gitlogs = parse_gitlogs(filepath, get_file_gitlogs(filepath, repo_dir_path))
 
-    changecount_by_commiter = Counter([gitlog.author for gitlog in gitlogs])
+    changecounter = Counter([gitlog.author for gitlog in gitlogs])
+
+    # CounterからCommitterChangeCountに変換
+    changecount_by_committer = [
+        CommitterChangeCount(committer=k, change_count=v)
+        for k, v in changecounter.items()
+    ]
+
     return FileChangeCountMetrics(
-        filepath=filepath, change_count=changecount_by_commiter
+        filepath=filepath, change_counts=changecount_by_committer
     )

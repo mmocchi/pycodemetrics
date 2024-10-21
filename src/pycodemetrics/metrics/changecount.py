@@ -11,8 +11,8 @@ def calculate_changecount(gitlogs: list[GitFileCommitLog]) -> Counter:
         gitlogs (list[GitFileCommitLog]): A list of GitFileCommitLog.
 
     Returns:
-        Counter: The change count by commiter.
+        Counter: The change count by committer.
     """
 
-    changecount_by_commiter = Counter([gitlog.author for gitlog in gitlogs])
-    return changecount_by_commiter
+    changecount_by_committer = Counter([gitlog.author for gitlog in gitlogs])
+    return changecount_by_committer
