@@ -76,12 +76,8 @@ jobs:
 
         try:
             response_data = response.json()
-            # レスポンスが200で、かつ"Not Found"メッセージの場合はバージョンが存在しない
-            if response.status_code == 200 and response_data.get("message") == "Not Found":
-                print(f"Version {version} does not exist on TestPyPI. Proceeding with release.")
-                exit(0)
             # レスポンスが200で、かつ"Not Found"メッセージでない場合はバージョンが存在する
-            elif response.status_code == 200:
+            if response.status_code == 200 and response_data.get("message") != "Not Found":
                 print(f"Error: Version {version} already exists on TestPyPI.")
                 exit(1)
         except json.JSONDecodeError:
@@ -89,10 +85,9 @@ jobs:
             print(f"Response: {response.text}")
             exit(1)
 
-        # その他のエラーの場合はエラーメッセージを出力
-        print(f"Error: Unexpected response from TestPyPI. Status code: {response.status_code}")
-        print(f"Response: {response.text}")
-        exit(1)
+        # バージョンが存在しない場合は正常終了
+        print(f"Version {version} does not exist on TestPyPI. Proceeding with release.")
+        exit(0)
         EOF
 
     # 新しいタグを作成
