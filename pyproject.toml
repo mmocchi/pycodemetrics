@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "pycodemetrics"
-version = "0.0.11"
+version = "0.0.12"
 description = "Python code metrics tool"
 readme = "README.md"
 requires-python = ">=3.12"
