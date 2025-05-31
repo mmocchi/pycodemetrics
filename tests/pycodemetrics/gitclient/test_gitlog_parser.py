@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 
 from pycodemetrics.gitclient.gitlog_parser import parse_gitlogs
 from pycodemetrics.gitclient.models import GitFileCommitLog
@@ -6,7 +7,7 @@ from pycodemetrics.gitclient.models import GitFileCommitLog
 
 def test_parse_gitlogs():
     # Arrange
-    git_file_path = "path/to/file.py"
+    git_file_path = Path("path/to/file.py")
     gitlogs = [
         "abc123,John Doe,2023-10-01 12:00:00 +0000,Initial commit",
         "def456,Jane Smith,2023-10-02 13:30:00 +0000,Added new feature",

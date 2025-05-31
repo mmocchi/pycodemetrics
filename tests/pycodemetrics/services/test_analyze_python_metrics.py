@@ -56,7 +56,7 @@ def test_analyze_python_file(mock_open, mock_compute_metrics):
     # Assert: 期待されるPythonFileMetricsオブジェクトと結果を比較
     expected_metrics = PythonFileMetrics(
         filepath=filepath,
-        code_type="product",
+        code_type=CodeType.PRODUCT,
         group_name="undefined",
         metrics=mock_compute_metrics.return_value,
     )
@@ -116,7 +116,7 @@ def test_to_flat(mock_open, mock_compute_metrics):
     # Assert: 期待されるPythonFileMetricsオブジェクトと結果を比較
     expected_metrics = {
         "filepath": filepath,
-        "code_type": "product",
+        "code_type": CodeType.PRODUCT.value,
         "group_name": "undefined",
         "lines_of_code": 10,
         "logical_lines_of_code": 10,

@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+[guideline.md](mdc:.ai_guideline/guideline.md)を確認して、ガイドラインに従ったコードやテストを書くこと。

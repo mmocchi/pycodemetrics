@@ -27,8 +27,8 @@ dependencies = [
     "types-toml>=0.10.8.20240310"
 ]
 
-[project.optional-dependencies]
-dev = [
+[tool.uv]
+dev-dependencies = [
     "chardet>=5.2.0",
     "mypy>=1.11.0",
     "pytest>=8.3.2",

@@ -1,3 +1,30 @@
+"""Pythonコード分析CLIモジュール。
+
+このモジュールは、Pythonコードのメトリクス分析を行うためのCLIコマンドを提供します。
+指定されたパス内のPythonファイルを分析し、コードの品質や複雑性に関するメトリクスを計算します。
+
+主な機能:
+    - Pythonファイルの静的解析
+    - コードメトリクスの計算
+    - 結果の表示とエクスポート
+
+分析対象:
+    - 単一のPythonファイル
+    - ディレクトリ内のPythonファイル
+    - Gitリポジトリ内のPythonファイル
+
+出力形式:
+    - テーブル形式（デフォルト）
+    - JSON形式
+    - CSV形式
+    - その他のカスタム形式
+
+制限事項:
+    - 入力パスは存在する必要があります
+    - エクスポートファイルの上書きは明示的に指定する必要があります
+    - 表示制限は0以上である必要があります
+"""
+
 import sys
 from pathlib import Path
 
@@ -10,6 +37,7 @@ from pycodemetrics.cli.analyze_python.handler import (
     DisplayParameter,
     ExportParameter,
     InputTargetParameter,
+    RuntimeParameter,
     run_analyze_python_metrics,
 )
 from pycodemetrics.services.analyze_python_metrics import FilterCodeType
@@ -59,6 +87,12 @@ from pycodemetrics.services.analyze_python_metrics import FilterCodeType
     default=FilterCodeType.PRODUCT.value,
     help=f"Filter code type, default: {FilterCodeType.PRODUCT.value}",
 )
+@click.option(
+    "--workers",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Number of workers for multiprocessing. If not specified, use the number of CPUs.",
+)
 def analyze(
     input_path: str,
     with_git_repo: bool,
@@ -68,11 +102,12 @@ def analyze(
     columns: str | None,
     limit: int,
     code_type: str,
-):
-    """
-    Analyze python metrics in the specified path.
+    workers: int | None,
+) -> None:
+    """Analyze python metrics in the specified path
 
-    INPUT_PATH: Path to the target python file or directory.
+    INPUT_PATH: Path to the target directory or git repository directory.
+
     """
 
     try:
@@ -97,9 +132,15 @@ def analyze(
             export_file_path=export_file_path, overwrite=export_overwrite
         )
 
+        runtime_param = RuntimeParameter(
+            workers=workers, filter_code_type=FilterCodeType(code_type)
+        )
+
         # メイン処理の実行
-        run_analyze_python_metrics(input_param, display_param, export_param)
+        run_analyze_python_metrics(
+            input_param, runtime_param, display_param, export_param
+        )
         sys.exit(RETURN_CODE.SUCCESS)
     except Exception as e:
-        click.echo(f"Error: {e}", err=True)
+        click.echo(f"Error in analyze command: {type(e).__name__}: {str(e)}", err=True)
         raise e

@@ -20,7 +20,7 @@ PyCodeMetricsプロジェクトへの貢献に興味を持っていただき、�
 2. Poetryを使用して依存関係をインストールします。
 
     ```sh
-    uv pip install -e ".[dev]"
+    uv sync
     ```
 
 ## 開発用コマンド
@@ -40,6 +40,7 @@ PyCodeMetricsプロジェクトへの貢献に興味を持っていただき、�
 - 型チェックの実行:
   ```sh
   uv run mypy src
+  uv run mypy tests
   ```
 
 ## コードスタイル
