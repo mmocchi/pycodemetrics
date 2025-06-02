@@ -1,5 +1,31 @@
+"""Pythonコード分析ハンドラーモジュール。
+
+このモジュールは、Pythonコードのメトリクス分析を行うためのハンドラーを提供します。
+分析対象のファイルの取得、分析の実行、結果の表示・エクスポートなどの機能を提供します。
+
+主な機能:
+    - 分析対象ファイルの取得と検証
+    - コードメトリクスの計算と分析
+    - 結果の表示形式の制御
+    - 分析結果のエクスポート
+
+処理フロー:
+    1. 入力パラメータの検証
+    2. 分析対象ファイルの取得
+    3. コードメトリクスの計算
+    4. 結果のフィルタリングとソート
+    5. 結果の表示とエクスポート
+
+制限事項:
+    - 分析対象はPythonファイルのみ
+    - ファイルサイズの制限あり
+    - エンコーディングはUTF-8のみ対応
+"""
+
 import logging
 import os
+from concurrent.futures import as_completed
+from concurrent.futures.process import ProcessPoolExecutor
 from enum import Enum
 from pathlib import Path
 
@@ -17,6 +43,7 @@ from pycodemetrics.services.analyze_python_metrics import (
     analyze_python_file,
 )
 from pycodemetrics.util.file_util import (
+    get_code_type,
     get_target_files_by_git_ls_files,
     get_target_files_by_path,
 )
@@ -31,12 +58,14 @@ Column = Enum(  # type: ignore[misc]
 
 
 class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
-    """
-    Input parameters for the target python file or directory.
+    """入力パラメータクラス。
 
-    path (Path): Path to the target python file or directory.
-    with_git_repo (bool): Analyze python files in the git.
-    config_file_path (Path): Path to the configuration file.
+    分析対象のPythonファイルまたはディレクトリに関するパラメータを定義します。
+
+    Attributes:
+        path (Path): 分析対象のPythonファイルまたはディレクトリのパス
+        with_git_repo (bool): Gitリポジトリ内のPythonファイルを分析するかどうか。Falseの場合は指定されたパス内を再帰的に探索する
+        config_file_path (Path): 設定ファイルのパス
     """
 
     path: Path
@@ -45,12 +74,13 @@ class InputTargetParameter(BaseModel, frozen=True, extra="forbid"):
 
 
 class RuntimeParameter(BaseModel, frozen=True, extra="forbid"):
-    """
-    Runtime parameter for analyze_hotspot_metrics
+    """実行時パラメータクラス。
 
-    Args:
-        workers (int | None): Number of workers for multiprocessing. If None, use the number of CPUs.
-        filter_code_type (FilterCodeType): Filter code type.
+    分析の実行に関するパラメータを定義します。
+
+    Attributes:
+        workers (int | None): マルチプロセッシングのワーカー数。Noneの場合はCPU数を使用
+        filter_code_type (FilterCodeType): フィルタリングするコードタイプ
     """
 
     workers: int | None = Field(default_factory=lambda: os.cpu_count())
@@ -58,10 +88,17 @@ class RuntimeParameter(BaseModel, frozen=True, extra="forbid"):
 
 
 class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
-    """
-    Display parameters for the result.
+    """表示パラメータクラス。
 
-    format (DisplayFormat): Display format for the result.
+    分析結果の表示に関するパラメータを定義します。
+
+    Attributes:
+        format (DisplayFormat): 表示フォーマット
+        filter_code_type (FilterCodeType): フィルタリングするコードタイプ
+        limit (int | None): 表示する行数の制限
+        sort_column (Column): ソート対象のカラム
+        sort_desc (bool): 降順でソートするかどうか
+        columns (list[Column] | None): 表示するカラムのリスト
     """
 
     format: DisplayFormat = DisplayFormat.TABLE
@@ -74,42 +111,90 @@ class DisplayParameter(BaseModel, frozen=True, extra="forbid"):
     )
 
     @field_validator("sort_column")
-    def set_sort_column(cls, value: str):
+    def set_sort_column(cls, value: str) -> str:
+        """sort_columnのバリデーション。
+
+        Args:
+            value (str): 検証するソートカラム
+
+        Returns:
+            str: 検証済みのソートカラム
+
+        Raises:
+            ValueError: 無効なソートカラムが指定された場合
+        """
         if value not in PythonFileMetrics.get_keys():
             raise ValueError(f"Invalid sort column: {value}")
         return value
 
     @field_validator("limit")
-    def set_limit(cls, value: int | None):
+    def set_limit(cls, value: int | None) -> int | None:
+        """表示行数制限のバリデーション。
+
+        Args:
+            value (int | None): 検証する表示行数制限
+
+        Returns:
+            int | None: 検証済みの表示行数制限
+        """
         if value is None or value <= 0:
             return None
         return value
 
 
 class ExportParameter(BaseModel, frozen=True, extra="forbid"):
-    """
-    Export parameters for the result.
+    """エクスポート用のパラメータクラス。
 
-    export_file_path (Path): Path to the export file.
-    overwrite (bool): Overwrite the export file if it already exists.
+    分析結果のエクスポートに関するパラメータを定義します。
+
+    Attributes:
+        export_file_path (Path | None): エクスポート先のファイルパス
+        overwrite (bool): 既存のファイルを上書きするかどうか
     """
 
     export_file_path: Path | None = None
     overwrite: bool = False
 
     def with_export(self) -> bool:
-        """
+        """エクスポートを行うかどうかを判定します。
+
         Returns:
-            bool: エクスポートするかどうか
+            bool: エクスポートを行う場合はTrue、そうでない場合はFalse
         """
         return self.export_file_path is not None
+
+
+def _filter_target_by_code_type(
+    target_file_paths: list[Path], settings: AnalyzePythonSettings
+) -> list[Path]:
+    if settings.filter_code_type == FilterCodeType.BOTH:
+        return target_file_paths
+
+    return [
+        target
+        for target in target_file_paths
+        if get_code_type(target, settings.testcode_type_patterns).value
+        == settings.filter_code_type.value
+    ]
 
 
 def _analyze_python_metrics(
     target_file_paths: list[Path], settings: AnalyzePythonSettings
 ) -> list[PythonFileMetrics]:
+    """Pythonファイルのメトリクスを分析します。
+
+    Args:
+        target_file_paths (list[Path]): 分析対象のファイルパスのリスト
+        settings (AnalyzePythonSettings): 分析設定
+
+    Returns:
+        list[PythonFileMetrics]: 分析結果となるPythonFileMetricsのリスト
+    """
     results = []
-    for filepath in tqdm(target_file_paths):
+
+    target_file_paths_ = _filter_target_by_code_type(target_file_paths, settings)
+
+    for filepath in tqdm(target_file_paths_):
         if not filepath.suffix == ".py":
             logger.warning(f"Skipping {filepath} as it is not a python file")
             continue
@@ -118,12 +203,22 @@ def _analyze_python_metrics(
             result = analyze_python_file(filepath, settings)
             results.append(result)
         except Exception as e:
-            logger.warning(f"Skipping {filepath}. cause of error: {e}")
+            logger.warning(
+                f"Skipping {filepath} due to error: {type(e).__name__}: {str(e)}"
+            )
             continue
     return results
 
 
 def _transform_for_display(results: list[PythonFileMetrics]) -> pd.DataFrame:
+    """分析結果を表示用のDataFrameに変換します。
+
+    Args:
+        results (list[PythonFileMetrics]): 分析結果のリスト
+
+    Returns:
+        pd.DataFrame: 表示用のDataFrame
+    """
     results_flat = [result.to_flat() for result in results]
     return pd.DataFrame(results_flat, columns=list(results_flat[0].keys()))
 
@@ -131,15 +226,14 @@ def _transform_for_display(results: list[PythonFileMetrics]) -> pd.DataFrame:
 def _filter_for_display_by_code_type(
     results_df: pd.DataFrame, filter_code_type: FilterCodeType
 ) -> pd.DataFrame:
-    """
-    Filter the result of analyze_hotspot_metrics for display by code type
+    """コードタイプでフィルタリングします。
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
-        filter_code_type (FilterCodeType): Filter code type.
+        results_df (pd.DataFrame): 分析結果のDataFrame
+        filter_code_type (FilterCodeType): フィルタリングするコードタイプ
 
     Returns:
-        pd.DataFrame: Filtered result for display.
+        pd.DataFrame: フィルタリング後のDataFrame
     """
     if filter_code_type == FilterCodeType.BOTH:
         return results_df
@@ -150,18 +244,16 @@ def _filter_for_display_by_code_type(
 def _sort_value_for_display(
     results_df: pd.DataFrame, sort_column: Column, sort_desc: bool
 ) -> pd.DataFrame:
-    """
-    Sort the result of analyze_hotspot_metrics for display
+    """分析結果をソートします。
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
-        sort_column (Column): Column to sort the result.
-        sort_desc (bool): Sort the result in descending order.
+        results_df (pd.DataFrame): 分析結果のDataFrame
+        sort_column (Column): ソート対象のカラム
+        sort_desc (bool): 降順でソートするかどうか
 
     Returns:
-        pd.DataFrame: Sorted result for display.
+        pd.DataFrame: ソート後のDataFrame
     """
-
     sorted_df = results_df.sort_values(sort_column.value, ascending=not sort_desc)
     return sorted_df.reset_index(drop=True)
 
@@ -169,15 +261,14 @@ def _sort_value_for_display(
 def _select_columns_for_display(
     results_df: pd.DataFrame, columns: list[Column] | None
 ) -> pd.DataFrame:
-    """
-    Select columns to display from the result of analyze_hotspot_metrics
+    """表示するカラムを選択します。
 
     Args:
-        results_df (pd.DataFrame): Result of analyze_hotspot_metrics.
-        columns (list[Columns] | None): Columns to display. If None, display all columns.
+        results_df (pd.DataFrame): 分析結果のDataFrame
+        columns (list[Column] | None): 表示するカラムのリスト。Noneの場合は全カラムを表示
 
     Returns:
-        pd.DataFrame: Selected columns for display.
+        pd.DataFrame: 選択されたカラムのDataFrame
     """
     if columns is None:
         return results_df
@@ -185,20 +276,61 @@ def _select_columns_for_display(
     return results_df[columns]
 
 
+def _analyze_python_metrics_for_multiprocessing(
+    target_file_paths: list[Path],
+    settings: AnalyzePythonSettings,
+    workers: int = 16,
+) -> list[PythonFileMetrics]:
+    """マルチプロセスでPythonファイルのメトリクスを分析します。
+
+    Args:
+        target_file_paths (list[Path]): 分析対象のファイルパスのリスト
+        settings (AnalyzePythonSettings): 分析設定
+        workers (int, optional): ワーカー数. Defaults to 16.
+
+    Returns:
+        list[PythonFileMetrics]: 分析結果となるPythonFileMetricsのリスト
+    """
+    results: list[PythonFileMetrics] = []
+
+    target_file_paths_ = _filter_target_by_code_type(target_file_paths, settings)
+
+    with tqdm(total=len(target_file_paths_)) as pbar:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(analyze_python_file, target, settings)
+                for target in target_file_paths
+                if target.suffix == ".py"
+            }
+
+            for future in as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    logger.error(f"Failed to analyze {future.exception}: {e}")
+                    continue
+                pbar.update(1)
+
+    return results
+
+
 def run_analyze_python_metrics(
     input_param: InputTargetParameter,
+    runtime_param: RuntimeParameter,
     display_param: DisplayParameter,
     export_param: ExportParameter,
 ) -> None:
-    """
-    Run the analyze python metrics.
+    """Pythonコードのメトリクス分析を実行します。
 
     Args:
-        input_param (InputTargetParameter): The input parameters.
-        display_param (DisplayParameter): The display parameters.
-        export_param (ExportParameter): The export parameters.
-    """
+        input_param (InputTargetParameter): 入力パラメータ
+        runtime_param (RuntimeParameter): 実行時パラメータ
+        display_param (DisplayParameter): 表示パラメータ
+        export_param (ExportParameter): エクスポートパラメータ
 
+    Returns:
+        None
+    """
     # パラメータの解釈
     base_path = None
     if input_param.with_git_repo:
@@ -223,10 +355,20 @@ def run_analyze_python_metrics(
             config_file_path
         ),
         user_groups=ConfigManager.get_user_groups(config_file_path),
+        filter_code_type=runtime_param.filter_code_type,
     )
 
     # メイン処理の実行
-    results = _analyze_python_metrics(target_file_full_paths, analyze_settings)
+    workers = runtime_param.workers or os.cpu_count()
+    if workers is None:
+        raise ValueError("Invalid workers: None")
+
+    if workers <= 1:
+        results = _analyze_python_metrics(target_file_full_paths, analyze_settings)
+    else:
+        results = _analyze_python_metrics_for_multiprocessing(
+            target_file_full_paths, analyze_settings, workers
+        )
 
     # 結果の整形
     results_df = _transform_for_display(results)
@@ -252,7 +394,9 @@ def run_analyze_python_metrics(
     display_df = _select_columns_for_display(display_df, display_param.columns)
     display_df = head_for_display(display_df, display_param.limit)
 
-    if export_param.with_export():
-        export(results_df, export_param.export_file_path, export_param.overwrite)
-
+    # 結果の表示
     display(display_df, display_param.format)
+
+    # 結果のエクスポート
+    if export_param.with_export():
+        export(display_df, export_param.export_file_path, export_param.overwrite)
