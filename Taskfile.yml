@@ -1,0 +1,41 @@
+version: "3"
+
+tasks:
+  lint:
+    desc: "Run ruff linter"
+    cmd: ruff check .
+
+  format:
+    desc: "Format code with ruff"
+    cmd: ruff format .
+
+  fix:
+    desc: "Auto-fix linting issues and format code"
+    cmds:
+      - ruff check --fix .
+      - ruff format .
+
+  mypy:
+    desc: "Run mypy type checking"
+    cmd: mypy src
+
+  test:
+    desc: "Run pytest tests"
+    cmd: pytest tests
+
+  test-cov:
+    desc: "Run pytest with coverage"
+    cmd: pytest tests --cov=src/pycodemetrics --cov-report=term-missing --cov-report=xml
+
+  check:
+    desc: "Run all checks (lint, mypy, test)"
+    deps:
+      - lint
+      - mypy
+      - test
+
+  dev:
+    desc: "Format code and run all checks"
+    deps:
+      - format
+      - check
