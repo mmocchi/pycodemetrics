@@ -9,7 +9,8 @@
     - ユーザー入力の検証
 
 サブコマンド:
-    - analyze_python_metrics: Pythonコードの分析
+    - analyze_python_metrics: Pythonコードの分析（ファイル単位）
+    - analyze_coupling_metrics: モジュール結合度の分析（プロジェクト全体）
     - analyze_hotspot_metrics: コードのホットスポット分析
     - analyze_committer_metrics: コミッターの分析
     - test: テスト機能
@@ -24,6 +25,7 @@ import click
 from pycodemetrics.cli.analyze_committer.cli import (
     committer as analyze_committer_metrics,
 )
+from pycodemetrics.cli.analyze_coupling.cli import coupling as analyze_coupling_metrics
 from pycodemetrics.cli.analyze_hotspot.cli import (
     hotspot as analyze_hotspot_metrics,
 )
@@ -38,7 +40,8 @@ def cli() -> None:
     """PyCodeMetricsのメインコマンドグループ。
 
     このコマンドグループは、以下のサブコマンドを提供します：
-    - analyze: Pythonコードの分析
+    - analyze: Pythonコードの分析（ファイル単位）
+    - coupling: モジュール結合度の分析（プロジェクト全体）
     - hotspot: コードのホットスポット分析
     - committer: コミッターの分析
     - test: テスト機能
@@ -49,6 +52,7 @@ def cli() -> None:
 
 
 cli.add_command(analyze_python_metrics)
+cli.add_command(analyze_coupling_metrics)
 cli.add_command(analyze_hotspot_metrics)
 cli.add_command(analyze_committer_metrics)
 cli.add_command(test)
