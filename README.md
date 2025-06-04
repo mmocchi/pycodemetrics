@@ -28,6 +28,42 @@ pycodemetrics analyze --path /path/to/your/project
 
 このコマンドは指定されたディレクトリ内のPythonファイルを分析し、メトリクスのレポートを生成します。
 
+## 開発
+
+### 前提条件
+
+開発には[Task](https://taskfile.dev/)が必要です。インストール方法は公式サイトを参照してください。
+
+### 開発用タスク
+
+プロジェクトではTaskfile.ymlを使用して開発タスクを管理しています：
+
+```sh
+# コードのリント
+task lint
+
+# コードのフォーマット
+task format
+
+# 自動修正とフォーマット
+task fix
+
+# 型チェック
+task mypy
+
+# テスト実行
+task test
+
+# カバレッジ付きテスト
+task test-cov
+
+# 全チェック実行（lint + mypy + test）
+task check
+
+# フォーマット後に全チェック実行
+task dev
+```
+
 ## ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。詳細については[LICENSE](LICENSE)ファイルを参照してください。
