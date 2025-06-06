@@ -1,5 +1,6 @@
 [tools]
 python="3.13.4"
+task = "3.433"
 
 [env]
 _.python.venv = ".venv"

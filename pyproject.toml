@@ -35,10 +35,9 @@ dev-dependencies = [
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "ruff>=0.11.12",
-    "taskipy>=1.13.0",
     "pre-commit>=4.0.0",
     "toml>=0.10.2",
-    "tox>=4.0.0"
+    "tox>=4.0.0",
 ]
 
 [project.scripts]
