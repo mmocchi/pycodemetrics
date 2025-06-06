@@ -19,6 +19,21 @@ class UserGroupConfig(BaseModel, extra="forbid"):
 
 TESTCODE_PATTERN_DEFAULT: list[str] = ["*/tests/*.*", "*/tests/*/*.*", "tests/*.*"]
 USER_GROUPS_DEFAULT: list[UserGroupConfig] = []
+EXCLUDE_PATTERN_DEFAULT: list[str] = [
+    "__pycache__",
+    ".git",
+    ".pytest_cache",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    "ENV",
+    ".env",
+    "site-packages",
+    "dist",
+    "build",
+    ".tox",
+]
 
 
 class ConfigManager:
@@ -50,6 +65,22 @@ class ConfigManager:
             ]
         except KeyError:
             return USER_GROUPS_DEFAULT
+
+    @classmethod
+    def _load_exclude_pattern(cls, pyproject_toml: dict) -> list[str]:
+        """
+        Load the exclude pattern from the pyproject.toml file.
+
+        Args:
+            pyproject_toml (dict): The pyproject.toml file.
+
+        Returns:
+            list[str]: The exclude pattern.
+        """
+        try:
+            return pyproject_toml["tool"]["pycodemetrics"]["exclude"]["pattern"]
+        except KeyError:
+            return EXCLUDE_PATTERN_DEFAULT
 
     @classmethod
     def _load_testcode_pattern(cls, pyproject_toml: dict) -> list[str]:
@@ -103,6 +134,23 @@ class ConfigManager:
             return cls._load_testcode_pattern(pyproject_toml)
         except FileNotFoundError:
             return TESTCODE_PATTERN_DEFAULT
+
+    @classmethod
+    def get_exclude_patterns(cls, config_file_path: Path) -> list[str]:
+        """
+        Get the exclude patterns.
+
+        Args:
+            config_file_path (Path): The path to the configuration file.
+
+        Returns:
+            list[str]: The exclude patterns.
+        """
+        try:
+            pyproject_toml = cls._load(config_file_path)
+            return cls._load_exclude_pattern(pyproject_toml)
+        except FileNotFoundError:
+            return EXCLUDE_PATTERN_DEFAULT
 
     @classmethod
     def get_user_groups(cls, config_file_path: Path) -> list[UserGroupConfig]:

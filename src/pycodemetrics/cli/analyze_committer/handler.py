@@ -273,7 +273,10 @@ def run_analyze_committer_metrics(
     export_param: ExportParameter,
 ) -> None:
     # パラメータの処理
-    target_file_paths = get_target_files_by_git_ls_files(input_param.path)
+    exclude_patterns = ConfigManager.get_exclude_patterns(input_param.config_file_path)
+    target_file_paths = get_target_files_by_git_ls_files(
+        input_param.path, exclude_patterns
+    )
 
     if len(target_file_paths) == 0:
         logger.warning("No python files found in the specified path.")
