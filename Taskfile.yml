@@ -27,6 +27,18 @@ tasks:
     desc: "Run pytest with coverage"
     cmd: pytest tests --cov=src/pycodemetrics --cov-report=term-missing --cov-report=xml
 
+  tox:
+    desc: "Run tests on all Python versions with tox"
+    cmd: tox
+
+  tox-py312:
+    desc: "Run tests on Python 3.12 with tox"
+    cmd: tox -e py312
+
+  tox-py313:
+    desc: "Run tests on Python 3.13 with tox"
+    cmd: tox -e py313
+
   check:
     desc: "Run all checks (lint, mypy, test)"
     deps:
