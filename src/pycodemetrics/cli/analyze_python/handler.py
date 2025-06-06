@@ -332,12 +332,15 @@ def run_analyze_python_metrics(
         None
     """
     # パラメータの解釈
+    exclude_patterns = ConfigManager.get_exclude_patterns(input_param.config_file_path)
     base_path = None
     if input_param.with_git_repo:
-        target_file_paths = get_target_files_by_git_ls_files(input_param.path)
+        target_file_paths = get_target_files_by_git_ls_files(
+            input_param.path, exclude_patterns
+        )
         base_path = input_param.path
     else:
-        target_file_paths = get_target_files_by_path(input_param.path)
+        target_file_paths = get_target_files_by_path(input_param.path, exclude_patterns)
         target_file_full_paths = [f for f in target_file_paths]
 
     if len(target_file_paths) == 0:

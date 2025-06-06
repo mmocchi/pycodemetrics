@@ -20,41 +20,77 @@ class CodeType(Enum):
     TEST = "test"
 
 
-def get_target_files_by_path(path: Path) -> list[Path]:
+def get_target_files_by_path(
+    path: Path, exclude_patterns: list[str] | None = None
+) -> list[Path]:
     """
     Get the target files by the specified path.
 
     Args:
         path (Path): The path to the target file or directory.
+        exclude_patterns (list[str] | None): The exclude patterns.
 
     Returns:
         list[Path]: The list of target files.
     """
+    if exclude_patterns is None:
+        exclude_patterns = []
+
     if path.is_dir():
-        return [
+        all_files = [
             Path(p)
             for p in glob.glob(
                 os.path.join(path.as_posix(), "**", "*.py"), recursive=True
             )
         ]
+        return [f for f in all_files if not _is_excluded(f, exclude_patterns)]
 
     if path.is_file() and path.suffix == ".py":
+        if _is_excluded(path, exclude_patterns):
+            return []
         return [path]
 
     raise ValueError(f"Invalid path: {path}")
 
 
-def get_target_files_by_git_ls_files(repo_path: Path) -> list[Path]:
+def get_target_files_by_git_ls_files(
+    repo_path: Path, exclude_patterns: list[str] | None = None
+) -> list[Path]:
     """
     Get the target files by the git ls-files command.
 
     Args:
         repo_path (Path): The path to the git repository.
+        exclude_patterns (list[str] | None): The exclude patterns.
 
     Returns:
         list[Path]: The list of target files.
     """
-    return [f for f in list_git_files(repo_path) if f.suffix == ".py"]
+    if exclude_patterns is None:
+        exclude_patterns = []
+
+    all_files = [f for f in list_git_files(repo_path) if f.suffix == ".py"]
+    return [f for f in all_files if not _is_excluded(f, exclude_patterns)]
+
+
+def _is_excluded(filepath: Path, exclude_patterns: list[str]) -> bool:
+    """
+    Check whether the file path should be excluded.
+
+    Args:
+        filepath (Path): The file path.
+        exclude_patterns (list[str]): The exclude patterns.
+
+    Returns:
+        bool: True if the file path should be excluded, otherwise False.
+    """
+    file_str = filepath.as_posix()
+    return any(
+        fnmatch.fnmatch(file_str, pattern)
+        or fnmatch.fnmatch(str(filepath), pattern)
+        or pattern in file_str.split("/")
+        for pattern in exclude_patterns
+    )
 
 
 def _is_match(
