@@ -39,8 +39,7 @@ jobs:
       run: uv sync
     # toxでのテスト実行
     - name: Run tests with tox
-      run: |
-        uv run tox -e py${{ matrix.python-version | replace('.', '') }}
+      run: uv run tox -e py${{ matrix.python-version | replace('.', '') }}
     # Python 3.13でのみカバレッジコメントを追加
     - name: Run tests for coverage report
       if: matrix.python-version == '3.13'
