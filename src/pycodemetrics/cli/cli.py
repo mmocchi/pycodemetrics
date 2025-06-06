@@ -12,6 +12,7 @@
     - analyze_python_metrics: Pythonコードの分析（ファイル単位）
     - analyze_coupling_metrics: モジュール結合度の分析（プロジェクト全体）
     - analyze_hotspot_metrics: コードのホットスポット分析
+    - analyze_health_metrics: プロジェクト健康度の分析
     - analyze_committer_metrics: コミッターの分析
     - test: テスト機能
 
@@ -26,6 +27,7 @@ from pycodemetrics.cli.analyze_committer.cli import (
     committer as analyze_committer_metrics,
 )
 from pycodemetrics.cli.analyze_coupling.cli import coupling as analyze_coupling_metrics
+from pycodemetrics.cli.analyze_health.cli import health as analyze_health_metrics
 from pycodemetrics.cli.analyze_hotspot.cli import (
     hotspot as analyze_hotspot_metrics,
 )
@@ -43,6 +45,7 @@ def cli() -> None:
     - analyze: Pythonコードの分析（ファイル単位）
     - coupling: モジュール結合度の分析（プロジェクト全体）
     - hotspot: コードのホットスポット分析
+    - health: プロジェクト健康度の分析
     - committer: コミッターの分析
     - test: テスト機能
 
@@ -54,6 +57,7 @@ def cli() -> None:
 cli.add_command(analyze_python_metrics)
 cli.add_command(analyze_coupling_metrics)
 cli.add_command(analyze_hotspot_metrics)
+cli.add_command(analyze_health_metrics)
 cli.add_command(analyze_committer_metrics)
 cli.add_command(test)
 
