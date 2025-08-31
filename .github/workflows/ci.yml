@@ -52,7 +52,7 @@ jobs:
     # テストカバレッジをPRコメントとして追加
     - name: Pytest coverage comment
       if: matrix.python-version == '3.13'
-      uses: MishaKav/pytest-coverage-comment@v1.1.56
+      uses: MishaKav/pytest-coverage-comment@v1.1.57
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         junitxml-path: ./pytest.xml
